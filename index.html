@@ -1,0 +1,2484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Public Demo • Petty Cash Web App</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    html, body {
+      font-family: 'Inter', sans-serif;
+      height: auto;
+      overflow-x: hidden;
+    }
+    .ho-paper {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08);
+    }
+    .ho-table th, .ho-table td {
+      border: 1px solid #94a3b8;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    /* Screen layout for 4-Up Print Pages */
+    .print-page-4up {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    @media (min-width: 768px) {
+      .print-page-4up {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    /* True A4 4-Up Print Stylesheet (2 columns x 2 rows per A4 page) */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+      }
+      html, body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      main {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .ho-paper {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+      .print-page-4up {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+        gap: 6mm !important;
+        margin-bottom: 0 !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .print-page-4up:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+      .vault-print-card {
+        border: 1.5px solid #334155 !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+      }
+      .vault-print-card:nth-child(4n) {
+        page-break-after: always !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+  <!-- Public demo header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 no-print">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 font-bold text-lg">
+          D
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="font-bold text-base sm:text-lg tracking-tight">Public Demo • Petty Cash Web App</h1>
+            <span id="modeStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
+              🧪 Public Demo — Not Secure
+            </span>
+            <span id="syncStatusPill" class="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-medium">
+              💾 Demo data only
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Fictional data only • Demonstrates expense entry, receipt OCR, voucher routing, and print layouts</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="btnHeaderSyncNow" type="button" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-400/30 font-semibold px-3 py-2 rounded-lg transition">
+          🔄 Sync Phones
+        </button>
+        <button id="btnToggleManagerLock" type="button" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30 font-semibold px-3 py-2 rounded-lg transition">
+          🧪 Open Demo Manager View
+        </button>
+        <span class="text-xs text-slate-400">External form and workbook links removed</span>
+        <button id="btnDemoNov23" type="button" class="manager-only hidden text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-3 py-2 rounded-lg transition">
+          ⚡ Test 23rd Nov Entry (Routes to 21–30 Nov)
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation tabs for demo workflows -->
+    <div style="flex-wrap: wrap;" class="max-w-7xl mx-auto px-4 flex flex-wrap items-center gap-1.5 pb-2.5 pt-1 text-xs font-semibold">
+      <button type="button" data-tab="form" class="nav-tab px-3 py-2 rounded-lg bg-white text-slate-900 shadow-sm flex items-center gap-1.5">
+        <span>📱 1. Staff Entry Form</span>
+      </button>
+      <button type="button" data-tab="dump" class="nav-tab manager-only hidden px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 flex items-center gap-1.5">
+        <span>📋 2. Voucher Wise Dump</span>
+        <span id="badgeDumpCount" class="px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-200 text-[11px]">3</span>
+      </button>
+      <button type="button" data-tab="ho1" class="nav-tab manager-only hidden px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 flex items-center gap-1.5">
+        <span>🏢 3. HO: 1st–10th Nov</span>
+        <span id="badgeHo1Count" class="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px]">0</span>
+      </button>
+      <button type="button" data-tab="ho2" class="nav-tab manager-only hidden px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 flex items-center gap-1.5">
+        <span>🏢 4. HO: 11th–20th Nov</span>
+        <span id="badgeHo2Count" class="px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[11px]">3</span>
+      </button>
+      <button type="button" data-tab="ho3" class="nav-tab manager-only hidden px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 flex items-center gap-1.5">
+        <span>🏢 5. HO: 21st–30th Nov</span>
+        <span id="badgeHo3Count" class="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px]">0</span>
+      </button>
+      <button type="button" data-tab="vault" class="nav-tab manager-only hidden px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 flex items-center gap-1.5">
+        <span>🖼️ 6. 4-Up Print & Bill Vault</span>
+      </button>
+      <button type="button" data-tab="script" class="nav-tab manager-only hidden px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 flex items-center gap-1.5">
+        <span>⚙️ 7. Google Sheet Live Sync Setup</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Public demo view toggle. This is not authentication. -->
+  <div id="pinModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">🧪 Open Demo Manager View</h3>
+        <button id="btnClosePinModal" type="button" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+      <p class="text-xs text-amber-800">Public demo only: enter <code class="bg-amber-100 px-1.5 py-0.5 rounded font-bold">DEMO</code>. This client-side toggle is not access control. Never enter real financial or personal information.</p>
+      <div>
+        <label for="inpManagerPin" class="block text-xs font-semibold text-slate-700 mb-1">Demo code</label>
+        <input id="inpManagerPin" type="text" maxlength="8" placeholder="Enter DEMO" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-center text-lg font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <p id="pinErrorMsg" class="hidden text-xs text-rose-600 font-semibold mt-1.5">Use DEMO to open the fictional demo view.</p>
+      </div>
+      <div class="flex items-center gap-2 pt-1">
+        <button id="btnConfirmPin" type="button" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs">
+          Open Demo View
+        </button>
+        <button id="btnCancelPin" type="button" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-600 text-xs font-semibold">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attach Bill Photo / Paste Drive Link Modal (For Tab 6 Vault Cards) -->
+  <div id="vaultPhotoModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-slate-900">📷 Attach Bill Photo / Paste Drive Link</h3>
+          <p id="vaultModalSub" class="text-xs text-indigo-700 font-semibold mt-0.5">Demo voucher</p>
+        </div>
+        <button id="btnCloseVaultModal" type="button" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+
+      <!-- Option A: Upload & Compress Screenshot from Device -->
+      <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2">
+        <div class="text-xs font-bold text-indigo-950">Option 1: Upload Receipt / Meter Screenshot from Device</div>
+        <p class="text-[11px] text-indigo-800">Automatically compresses via HTML5 Canvas (`max 800px`, JPEG `0.7`) so it loads instantly and prints on your 4-Up A4 sheet.</p>
+        <input id="inpVaultModalFile" type="file" accept="image/*" class="w-full text-xs text-slate-700 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500" />
+      </div>
+
+      <!-- Option B: Paste Google Drive File Link or ID -->
+      <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+        <label for="inpVaultDriveLink" class="block text-xs font-bold text-slate-900">Option 2: Paste Google Drive File Link or File ID</label>
+        <p class="text-[11px] text-slate-500">Auto-converts any Drive URL or ID into <code class="bg-slate-200 px-1 rounded">https://drive.google.com/thumbnail?id=FILE_ID&amp;sz=w1000</code></p>
+        <input id="inpVaultDriveLink" type="text" placeholder="Paste https://drive.google.com/file/d/... or File ID" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <button id="btnSaveVaultDriveLink" type="button" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 rounded-xl text-xs transition">
+          🔗 Convert &amp; Save Drive Thumbnail Link
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between pt-1">
+        <button id="btnClearVaultPhoto" type="button" class="text-xs text-rose-600 hover:text-rose-800 font-semibold">
+          Reset to Digital Slip
+        </button>
+        <button id="btnCancelVaultModal" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 text-xs font-semibold">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Banner -->
+  <div id="toastBanner" class="hidden fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-3 text-xs sm:text-sm no-print">
+    <span id="toastIcon" class="text-lg">✅</span>
+    <div id="toastText" class="font-medium">Entry saved!</div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto w-full px-4 py-5 space-y-6">
+    <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+      <strong>Public demonstration only.</strong> Records and names are fictional. This page is not authenticated or access-controlled; do not enter real expenses, receipts, or personal information, and do not connect a production Google Sheet.
+    </div>
+
+    <!-- KPI Strip (Hidden in the initial demo view and in print) -->
+    <section id="kpiStripSection" class="manager-only hidden grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Next Voucher No</div>
+        <div id="kpiNextVoucher" class="text-base sm:text-lg font-extrabold text-indigo-600 mt-0.5">DEMO01-Nov_04</div>
+        <div class="text-[11px] text-slate-500">Auto-series locked</div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">1st–10th Nov HO</div>
+        <div id="kpiHo1Total" class="text-base sm:text-lg font-extrabold text-emerald-600 mt-0.5">₹0.00</div>
+        <div id="kpiHo1Sub" class="text-[11px] text-slate-500">0 vouchers</div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">11th–20th Nov HO</div>
+        <div id="kpiHo2Total" class="text-base sm:text-lg font-extrabold text-blue-600 mt-0.5">₹330.00</div>
+        <div id="kpiHo2Sub" class="text-[11px] text-slate-500">3 vouchers</div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">21st–30th Nov HO</div>
+        <div id="kpiHo3Total" class="text-base sm:text-lg font-extrabold text-amber-600 mt-0.5">₹0.00</div>
+        <div id="kpiHo3Sub" class="text-[11px] text-slate-500">0 vouchers</div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm col-span-2 sm:col-span-1">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Nov Expense</div>
+        <div id="kpiGrandExpense" class="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5">₹330.00</div>
+        <div id="kpiNetBalance" class="text-[11px] text-slate-500">Net Balance: -₹330.00</div>
+      </div>
+    </section>
+
+    <!-- TAB 1: STAFF ENTRY FORM -->
+    <section id="view-form" class="grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+      <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Staff Petty Cash Expense Entry (DEMO01 - Demo Store)</h2>
+            <p class="text-xs text-slate-500">Blind Receipt Upload (Canvas 800px JPEG 0.7) • Auto-Series Voucher • Auto-Routes to 10-Day HO Sheet</p>
+          </div>
+          <span id="formVoucherPill" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200">
+            DEMO01-Nov_04
+          </span>
+        </div>
+
+        <form id="pettyCashForm" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label for="inpUpdatedTime" class="block text-xs font-semibold text-slate-700 mb-1">Uploaded Timestamp (IST)</label>
+              <input id="inpUpdatedTime" type="text" readonly class="w-full rounded-xl bg-slate-100 border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-600 cursor-not-allowed" />
+            </div>
+            <div>
+              <label for="inpExpenseDate" class="block text-xs font-semibold text-slate-700 mb-1">Expense Date *</label>
+              <input id="inpExpenseDate" type="date" value="2026-11-11" min="2026-11-01" max="2026-11-30" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="inpVoucherNo" class="block text-xs font-semibold text-slate-700 mb-1">Auto Voucher No. (Locked)</label>
+              <input id="inpVoucherNo" type="text" value="DEMO01-Nov_04" readonly class="w-full rounded-xl bg-slate-100 border border-slate-200 px-3 py-2 text-sm font-bold text-indigo-700 cursor-not-allowed" />
+            </div>
+          </div>
+
+          <!-- Live 10-Day HO Target Indicator -->
+          <div id="routingBanner" class="p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <span class="text-lg">🎯</span>
+              <div>
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-blue-700">Auto-Organised Target Sheet</div>
+                <div id="routingSheetName" class="text-xs sm:text-sm font-bold text-blue-950">HO Petty Cash - 11th to 20th Nov</div>
+              </div>
+            </div>
+            <span id="routingDateWindow" class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white text-blue-800 border border-blue-200">
+              Dates: 11th–20th Nov
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="inpStaff" class="block text-xs font-semibold text-slate-700 mb-1">Staff Name (Expense By) *</label>
+              <select id="inpStaff" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="Demo Staff 1">Demo Staff 1</option>
+                <option value="Demo Staff 2">Demo Staff 2</option>
+                <option value="Demo Staff 3">Demo Staff 3</option>
+                <option value="Demo Staff 4">Demo Staff 4</option>
+                <option value="Demo Staff 5">Demo Staff 5</option>
+                <option value="Demo Staff 6">Demo Staff 6</option>
+                <option value="Demo Manager">Demo Manager</option>
+                <option value="Demo Staff 7">Demo Staff 7</option>
+                <option value="Demo Staff 8">Demo Staff 8</option>
+                <option value="Store">Store</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="inpPaidBy" class="block text-xs font-semibold text-slate-700 mb-1">Paid By *</label>
+              <select id="inpPaidBy" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="Demo Manager">Demo Manager</option>
+                <option value="Demo Staff 1">Demo Staff 1</option>
+                <option value="Demo Staff 2">Demo Staff 2</option>
+                <option value="Demo Staff 3">Demo Staff 3</option>
+                <option value="Demo Staff 4">Demo Staff 4</option>
+                <option value="Demo Staff 5">Demo Staff 5</option>
+                <option value="Demo Staff 6">Demo Staff 6</option>
+                <option value="Demo Staff 7">Demo Staff 7</option>
+                <option value="Demo Staff 8">Demo Staff 8</option>
+                <option value="Store">Store</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="inpCategory" class="block text-xs font-semibold text-slate-700 mb-1">Nature of Expenses (HO Category) *</label>
+              <select id="inpCategory" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="Travelling">11. Travelling</option>
+                <option value="Refreshment- Food">1. Refreshment- Food</option>
+                <option value="Store Exp">2. Store Exp</option>
+                <option value="Courier">3. Courier</option>
+                <option value="Staff Welfare">4. Staff Welfare</option>
+                <option value="BTL Gift">5. BTL Gift</option>
+                <option value="BTL Activity Exp">6. BTL Activity Exp</option>
+                <option value="Printing & Stationary">7. Printing & Stationary</option>
+                <option value="Repair & Maint.">8. Repair & Maint.</option>
+                <option value="Event Exp">9. Event Exp</option>
+                <option value="Accomodation">10. Accomodation</option>
+                <option value="Telephone">12. Telephone</option>
+                <option value="Others">13. Others</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="inpAmount" class="block text-xs font-semibold text-slate-700 mb-1">Expense Amount (Rs.) *</label>
+              <input id="inpAmount" type="number" min="0" step="1" placeholder="e.g. 51" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+
+          <div>
+            <label for="inpRemarks" class="block text-xs font-semibold text-slate-700 mb-1">Particulars / Description (For Dump &amp; HO Sheet) *</label>
+            <input id="inpRemarks" type="text" placeholder="e.g. Sample local journey" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <button type="button" data-remark="Sample local journey" data-amt="26" class="quick-remark text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg transition">
+                + Local journey (₹26)
+              </button>
+              <button type="button" data-remark="Sample return journey" data-amt="26" class="quick-remark text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg transition">
+                + Return journey (₹26)
+              </button>
+              <button type="button" data-remark="Sample office visit" data-amt="60" class="quick-remark text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg transition">
+                + Office visit (₹60)
+              </button>
+              <button type="button" data-remark="Sample transit fare" data-amt="51" class="quick-remark text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg transition">
+                + Transit fare (₹51)
+              </button>
+            </div>
+          </div>
+
+          <!-- Blind Bill Photo Upload (Canvas 800px JPEG 0.7 compression) & OCR Verification -->
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <label for="inpBillFile" class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <span>📷 Blind Receipt Upload (Auto-Compresses to 800px JPEG 0.7 for Vault &amp; Drive)</span>
+              </label>
+              <span id="ocrMatchBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                ⏳ NO BILL PHOTO
+              </span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+              <input id="inpBillFile" type="file" accept="image/*" class="text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+              <div class="flex items-center gap-1.5">
+                <input id="inpBillScannedAmt" type="number" min="0" step="0.01" placeholder="Scanned Bill Amount (₹)" class="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-bold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button id="btnSyncBillToExpense" type="button" title="Copy Scanned Bill Amount to Expense Amount" class="text-[11px] bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold px-2.5 py-1.5 rounded-lg">
+                  ⇄ Sync ₹
+                </button>
+              </div>
+            </div>
+            <!-- OCR & Compression Progress Bar -->
+            <div id="ocrProgressWrap" class="hidden space-y-1">
+              <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                <div id="ocrProgressBar" class="bg-indigo-600 h-1.5 rounded-full transition-all duration-200" style="width: 10%"></div>
+              </div>
+              <div id="ocrProgressText" class="text-[11px] font-semibold text-indigo-700">Compressing receipt &amp; scanning with OCR...</div>
+            </div>
+            <label class="flex items-center gap-2 text-[11px] font-medium text-slate-700 cursor-pointer pt-0.5">
+              <input id="chkAutoUpdateAmt" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+              <span>Automatically update <strong>Expense Amount (Rs.)</strong> from scanned attachment value</span>
+            </label>
+            <p id="blindPrivacyNotice" class="text-[11px] text-slate-500">
+              Public demo only: uploaded receipt images stay in this browser unless you configure a Google Apps Script URL. Do not upload real receipts or connect a production endpoint.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <div>
+              <label for="inpCashReceived" class="block text-xs font-semibold text-slate-700 mb-1">Petty Cash Received / Top-Up (Rs.)</label>
+              <input id="inpCashReceived" type="number" min="0" step="1" value="0" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label for="inpBillNote" class="block text-xs font-semibold text-slate-700 mb-1">Receipt / Proof Note</label>
+              <input id="inpBillNote" type="text" placeholder="Auto Meter Pic / Uber Bill / Cash Memo" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+
+          <div class="pt-2 flex flex-wrap items-center gap-3">
+            <button id="btnSubmitForm" type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-5 rounded-xl shadow-sm transition text-sm">
+              ✅ Save Demo Expense
+            </button>
+            <button id="btnResetForm" type="button" class="px-4 py-3 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold">
+              Clear
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right Column: Demo Links & Manager Summary -->
+      <div class="lg:col-span-5 space-y-5">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span>📲 Demo Links (Not Connected)</span>
+          </h3>
+          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+            <div class="text-xs font-bold text-emerald-950">Staff form placeholder</div>
+            <div class="text-[11px] text-emerald-800 break-all font-mono bg-white p-2 rounded border border-emerald-200">
+              https://example.com/
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnCopyStaffFormUrl" type="button" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                📋 Copy demo placeholder
+              </button>
+              <a href="https://example.com/" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-emerald-800 underline">
+                Open placeholder ↗
+              </a>
+            </div>
+          </div>
+
+          <!-- Hidden in the default demo view -->
+          <div class="manager-only hidden p-3 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+            <div class="text-xs font-bold text-indigo-950">Master workbook placeholder</div>
+            <div class="text-[11px] text-indigo-800 break-all font-mono bg-white p-2 rounded border border-indigo-200">
+              https://example.com/
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnCopyNovSheetUrl" type="button" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                📋 Copy demo placeholder
+              </button>
+              <a href="https://example.com/" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-indigo-800 underline">
+                Open placeholder ↗
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="manager-only hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span>🔄 10-Day HO Auto-Organisation</span>
+          </h3>
+          <div class="mt-3 space-y-2 text-xs">
+            <div class="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-emerald-950">HO Petty Cash - 1st to 10th Nov</div>
+                <div class="text-[11px] text-emerald-700">Expense Date: 01 Nov 2026 – 10 Nov 2026</div>
+              </div>
+              <button type="button" data-goto="ho1" class="goto-tab text-[11px] font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-200">View Sheet →</button>
+            </div>
+            <div class="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-blue-950">HO Petty Cash - 11th to 20th Nov</div>
+                <div class="text-[11px] text-blue-700">Expense Date: 11 Nov 2026 – 20 Nov 2026</div>
+              </div>
+              <button type="button" data-goto="ho2" class="goto-tab text-[11px] font-bold text-blue-800 bg-white px-2.5 py-1 rounded-lg border border-blue-200">View Sheet →</button>
+            </div>
+            <div class="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-amber-950">HO Petty Cash - 21st to 30th Nov</div>
+                <div class="text-[11px] text-amber-700">Expense Date: 21 Nov 2026 – 30 Nov 2026 (e.g. 23rd Nov)</div>
+              </div>
+              <button type="button" data-goto="ho3" class="goto-tab text-[11px] font-bold text-amber-800 bg-white px-2.5 py-1 rounded-lg border border-amber-200">View Sheet →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending Nov 1-3 Demo Staff 2 Remarks Audit Card -->
+        <div class="manager-only hidden bg-amber-50/60 rounded-2xl border border-amber-200 p-5">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm text-amber-950">⚠️ Pending Demo Staff 2 Remarks (Nov 1–3)</h3>
+            <span id="pendingRemarksBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">11 items</span>
+          </div>
+          <p class="text-xs text-amber-800 mt-1">
+            Click <button type="button" data-goto="dump" class="goto-tab underline font-bold">2. Voucher Wise Dump</button> to edit all 11 Demo Staff 2 rows from Nov 1–3 inline and click <strong>💾 Save Changes</strong>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: VOUCHER WISE DUMP (WITH INLINE EDITING & INSTANT SAVE CHANGES) -->
+    <section id="view-dump" class="hidden space-y-6 no-print">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Demo Manager: Petty Cash Voucher Register</h2>
+            <p class="text-xs text-slate-500">Inline Edit Date, Category, Particulars &amp; Amount (including the 11 Nov 1–3 Demo Staff 2 rows) → Click <strong>💾 Save Changes</strong> to recalculate HO sheets &amp; 4-Up Print cards</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="filterDumpStaff" aria-label="Filter by staff" class="text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white font-medium">
+              <option value="ALL">All Staff (20+)</option>
+              <option value="PENDING_BIPUL">⚠️ Pending Demo Staff 2 Rows (Nov 1–3)</option>
+              <option value="Demo Staff 2">Demo Staff 2 Only</option>
+              <option value="Demo Staff 1">Demo Staff 1 Only</option>
+              <option value="Demo Staff 3">Demo Staff 3 Only</option>
+              <option value="Demo Staff 4">Demo Staff 4 Only</option>
+              <option value="Demo Staff 5">Demo Staff 5 Only</option>
+              <option value="Demo Staff 6">Demo Staff 6 Only</option>
+              <option value="Demo Manager">Demo Manager Only</option>
+            </select>
+            <select id="filterMatchStatus" aria-label="Filter by match status" class="text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white font-medium">
+              <option value="ALL">All Bill Statuses</option>
+              <option value="MATCHED">✅ MATCHED Only</option>
+              <option value="MISMATCH">⚠️ MISMATCH Only</option>
+              <option value="NO BILL PHOTO">⏳ NO BILL PHOTO</option>
+            </select>
+            <button id="btnSaveAllDumpChanges" type="button" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition">
+              💾 Save Changes
+            </button>
+            <button id="btnCopyDumpTsv" type="button" class="text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+              📋 Copy Dump Rows (TSV)
+            </button>
+          </div>
+        </div>
+
+        <input id="inpRowOcrFile" type="file" accept="image/*" class="hidden" />
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-900 text-white">
+                <th class="py-2.5 px-2.5 rounded-tl-lg">Staff</th>
+                <th class="py-2.5 px-2.5">Paid By</th>
+                <th class="py-2.5 px-2.5">Expense Date</th>
+                <th class="py-2.5 px-2.5">Voucher No</th>
+                <th class="py-2.5 px-2.5">Nature of Expense</th>
+                <th class="py-2.5 px-2.5 min-w-[240px]">PARTICULARS / REMARKS</th>
+                <th class="py-2.5 px-2.5">Target HO Sheet</th>
+                <th class="py-2.5 px-2.5 text-right">Expense (₹)</th>
+                <th class="py-2.5 px-2.5 text-right">Bill Photo (₹)</th>
+                <th class="py-2.5 px-2.5 text-center">Match Status</th>
+                <th class="py-2.5 px-2.5 text-right">Closing (₹)</th>
+                <th class="py-2.5 px-2.5 rounded-tr-lg text-center min-w-[140px]">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="dumpTableBody" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Staff-Wise Advance & Expense Summary Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <h3 class="text-sm font-bold text-slate-900 mb-3">Staff-Wise Reconciliation &amp; Bill Match Summary</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                <th class="py-2 px-3">Staff Name</th>
+                <th class="py-2 px-3 text-right">Advance Given (₹)</th>
+                <th class="py-2 px-3 text-right">Expense in Dump (₹)</th>
+                <th class="py-2 px-3 text-right">Closing Balance (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="staffSummaryBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3, 4, 5: HEAD OFFICE FORMATTED SHEETS (1-10, 11-20, 21-30 NOV) -->
+    <section id="view-ho" class="hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 no-print">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-bold text-slate-500 uppercase">Select 10-Day HO Period:</span>
+          <button type="button" data-hoperiod="1" class="ho-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white">
+            1st Nov to 10th Nov
+          </button>
+          <button type="button" data-hoperiod="2" class="ho-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            11th Nov to 20th Nov
+          </button>
+          <button type="button" data-hoperiod="3" class="ho-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            21st Nov to 30th Nov
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnCopyHoTsv" type="button" class="text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+            📋 Copy HO Table (TSV)
+          </button>
+          <button id="btnPrintHo" type="button" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg border border-indigo-200 transition">
+            🖨️ Print / Save PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- Exact Head Office Reimbursement Form Replica -->
+      <div class="ho-paper rounded-xl p-6 sm:p-8 max-w-5xl mx-auto">
+        <div class="text-center border-b-2 border-slate-800 pb-3 mb-4">
+          <div class="text-xl sm:text-2xl font-light tracking-[0.35em] text-purple-900">DEMO RETAIL</div>
+          <div class="text-[10px] tracking-[0.25em] text-slate-500 uppercase mt-0.5">PUBLIC DEMONSTRATION</div>
+          <div class="mt-3 text-sm sm:text-base font-bold text-slate-900 border-t border-slate-300 pt-2">
+            Petty Cash Expenses Reimbursement Form
+          </div>
+        </div>
+
+        <!-- Metadata Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs border border-slate-400 p-3 mb-4 bg-slate-50/50">
+          <div class="space-y-1">
+            <div><span class="font-bold inline-block w-36">Name of Employee:-</span> <span>Demo Manager</span></div>
+            <div><span class="font-bold inline-block w-36">Store Location:-</span> <span>Demo Store, Mumbai</span></div>
+            <div><span class="font-bold inline-block w-36">Store Code:-</span> <span>DEMO01</span></div>
+            <div><span class="font-bold inline-block w-36">Period:-</span> <span id="hoPeriodLabel" class="font-bold text-indigo-700">1st Nov to 10th Nov</span></div>
+          </div>
+          <div class="space-y-1 sm:text-right">
+            <div><span class="font-bold">Date of Submission:</span> <span id="hoSubDate">11 Nov 26</span></div>
+            <div><span class="font-bold">Voucher Series:</span> <span id="hoVoucherSpan">DEMO01-Nov_01 – DEMO01-Nov_03</span></div>
+            <div><span class="font-bold">Total Period Expense:</span> <span id="hoHeaderTotal" class="font-bold text-slate-900">₹0.00</span></div>
+          </div>
+        </div>
+
+        <!-- 5-Column HO Expense Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse ho-table">
+            <thead>
+              <tr class="bg-indigo-100/80 text-slate-900 font-bold">
+                <th class="w-24 text-center">Date</th>
+                <th>Description</th>
+                <th class="w-44 text-center">Nature of Expenses</th>
+                <th class="w-36 text-center">Bill/ Invoice details</th>
+                <th class="w-28 text-right">Amount (Rs.)</th>
+              </tr>
+            </thead>
+            <tbody id="hoTableBody"></tbody>
+            <tfoot>
+              <tr class="font-bold bg-slate-100">
+                <td colspan="4" class="text-right">TOTAL</td>
+                <td id="hoFootTotal" class="text-right">0</td>
+              </tr>
+              <tr class="font-semibold">
+                <td class="text-center">Less:</td>
+                <td colspan="3">Advance given on</td>
+                <td class="text-right">0</td>
+              </tr>
+              <tr class="font-bold bg-indigo-50/60">
+                <td colspan="4" class="text-right">NET REIMBURSEMENT / TOTAL</td>
+                <td id="hoFootNet" class="text-right">0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- 13-Category HO Summary Block -->
+        <div class="mt-6 max-w-lg">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Summary (13 Standard HO Categories)</div>
+          <table class="w-full border-collapse ho-table">
+            <thead>
+              <tr class="bg-slate-100 font-bold">
+                <th class="w-16 text-center">Sr. No.</th>
+                <th>Nature of Expenses</th>
+                <th class="w-32 text-right">Amount (Rs.)</th>
+              </tr>
+            </thead>
+            <tbody id="hoCategorySummaryBody"></tbody>
+            <tfoot>
+              <tr class="font-bold bg-slate-100">
+                <td colspan="2" class="text-right">TOTAL</td>
+                <td id="hoCatTotalCell" class="text-right">0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Sign-off Footer -->
+        <div class="mt-8 pt-4 border-t border-slate-300 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs text-slate-700">
+          <div>
+            <div class="font-bold">Employee Name</div>
+            <div class="mt-1">Demo Manager</div>
+            <div class="mt-6 pt-2 border-t border-slate-400 text-[11px] text-slate-500">Employee Signature</div>
+          </div>
+          <div>
+            <div class="font-bold">Maker &amp; Approval Name</div>
+            <div class="mt-1">Demo Approver</div>
+            <div class="mt-6 pt-2 border-t border-slate-400 text-[11px] text-slate-500">Approval Signature</div>
+          </div>
+          <div>
+            <div class="font-bold">Accounts Team</div>
+            <div class="mt-1">Checker 1</div>
+            <div class="mt-6 pt-2 border-t border-slate-400 text-[11px] text-slate-500">Signature</div>
+          </div>
+          <div>
+            <div class="font-bold">Accounts Team</div>
+            <div class="mt-1">Checker 2</div>
+            <div class="mt-6 pt-2 border-t border-slate-400 text-[11px] text-slate-500">Signature</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: 4-UP PRINT VOUCHER GRID & PRIVATE BILL VAULT -->
+    <section id="view-vault" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 no-print">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">🖼️ 6. 4-Up Print &amp; Bill Vault (A4 2×2 Voucher Sheet)</h2>
+          <p class="text-xs text-slate-500">Displays real compressed receipt photos (`h-44` preview box) • Attach screenshots or paste Drive links • Prints strictly 4 vouchers per A4 page</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs text-slate-500">Private Drive link removed from public demo</span>
+          <button id="btnPrintVault" type="button" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2 rounded-lg shadow-sm">
+            🖨️ Print 4-Up Voucher Sheet
+          </button>
+        </div>
+      </div>
+
+      <!-- 10-Day Window Filter Bar for 4-Up Print Grid (Hidden when printing) -->
+      <div class="bg-white px-4 py-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 no-print">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-xs font-bold text-slate-500 uppercase mr-1">Filter 4-Up Print Grid:</span>
+          <button type="button" data-vaultfilter="ALL" class="vault-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white">
+            All Vouchers (<span id="vfCountAll">3</span>)
+          </button>
+          <button type="button" data-vaultfilter="1" class="vault-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            1st–10th Nov (<span id="vfCount1">0</span>)
+          </button>
+          <button type="button" data-vaultfilter="2" class="vault-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            11th–20th Nov (<span id="vfCount2">3</span>)
+          </button>
+          <button type="button" data-vaultfilter="3" class="vault-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">
+            21st–30th Nov (<span id="vfCount3">0</span>)
+          </button>
+        </div>
+        <div id="vaultPrintSummaryText" class="text-xs font-semibold text-slate-600">
+          Showing 3 vouchers (1 A4 page @ 4 vouchers/page)
+        </div>
+      </div>
+
+      <!-- 4-Up Print Pages Container -->
+      <div id="vaultGridContainer" class="space-y-4"></div>
+    </section>
+
+    <!-- TAB 7: GOOGLE SHEET LIVE SYNC SETUP & GOOGLE SITES EMBED -->
+    <section id="view-script" class="hidden space-y-5 no-print">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">⚙️ 7. Google Sheet Live Sync Setup (Multi-Phone Live Sync)</h2>
+            <p class="text-xs text-slate-500">
+              Connect this Web App to your Google Apps Script Web App URL so entries &amp; receipt photos from Demo Staff 1, Demo Staff 2, Demo Staff 3, and Demo Manager sync across all phones in real time.
+            </p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button id="btnCopyFullHtml" type="button" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3.5 py-2 rounded-xl transition">
+              📋 Copy Full HTML for Google Sites
+            </button>
+            <button id="btnCopyAppsScript" type="button" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3.5 py-2 rounded-xl transition">
+              📋 Copy Complete Code.gs
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Google Apps Script Web App Connection Box -->
+        <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div class="text-xs font-bold text-indigo-950 uppercase tracking-wider">Step 1: Connect Deployed Google Apps Script Web App URL</div>
+              <p class="text-xs text-indigo-800">Paste your deployed <code class="bg-white px-1.5 py-0.5 rounded border border-indigo-200">https://script.google.com/macros/s/.../exec</code> URL below to enable automatic `fetch` POST on submit and `fetch` GET on load/refresh.</p>
+            </div>
+            <span id="gasConnectionBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+              ⚡ Ready for Web App URL
+            </span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input id="inpGasWebAppUrl" type="url" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="flex-1 rounded-xl border border-indigo-300 bg-white px-3.5 py-2.5 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button id="btnSaveGasUrl" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition whitespace-nowrap">
+              🔗 Save &amp; Connect URL
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <button id="btnPullFromGas" type="button" class="text-xs bg-white hover:bg-indigo-100 text-indigo-800 font-semibold px-3 py-1.5 rounded-lg border border-indigo-300 transition">
+              🔄 Pull Latest Rows from Google Sheet (GET)
+            </button>
+            <button id="btnPushAllToGas" type="button" class="text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+              ☁️ Push All Current Vouchers &amp; Photos to Google Sheet (POST)
+            </button>
+            <span id="lastSyncTimestamp" class="text-[11px] text-indigo-700 font-medium ml-auto">
+              Last Sync: Local Storage Active
+            </span>
+          </div>
+        </div>
+
+        <!-- Step 2: Complete Code.gs Script -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Step 2: Paste This Complete `Code.gs` into Your Google Sheet (`Extensions → Apps Script`)
+          </div>
+          <pre id="appsScriptCode" class="bg-slate-950 text-slate-100 p-4 rounded-xl text-xs overflow-x-auto leading-relaxed"><code>const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID';
+const DUMP_TAB_NAME = 'Demo Manager : Petty Cash Voucher wise Dump';
+const HO_TAB_1_10 = 'HO Petty Cash - 1st to 10th Nov';
+const HO_TAB_11_20 = 'HO Petty Cash - 11th to 20th Nov';
+const HO_TAB_21_30 = 'HO Petty Cash - 21st to 30th Nov';
+const PHOTO_FOLDER_ID = 'YOUR_DRIVE_FOLDER_ID';
+const START_ROW = 8;
+
+function doGet(e) {
+  const action = (e &amp;&amp; e.parameter &amp;&amp; e.parameter.action) ? e.parameter.action : 'getEntries';
+  if (action === 'getEntries' || !e || !e.parameter || !e.parameter.ui) {
+    try {
+      const entries = readAllEntriesFromSheet_();
+      return jsonResponse_({ status: 'success', count: entries.length, entries: entries });
+    } catch (err) {
+      return jsonResponse_({ status: 'error', message: err.toString() });
+    }
+  }
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('Demo Retail Demo Store (DEMO01) • Petty Cash Web App')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const payload = JSON.parse((e &amp;&amp; e.postData &amp;&amp; e.postData.contents) ? e.postData.contents : '{}');
+    const action = payload.action || 'addEntry';
+    let entries = readAllEntriesFromSheet_();
+    let savedThumbnailUrl = '';
+    let savedFileId = '';
+
+    if (action === 'addEntry') {
+      const entry = payload.entry || payload;
+      const nextId = entries.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
+      let imgUrl = entry.imgData || '';
+      if (imgUrl &amp;&amp; imgUrl.indexOf('data:image/') === 0) {
+        const up = saveBase64ReceiptToDrive_(imgUrl, 'DEMO01-Nov_' + String(entries.length + 1).padStart(2, '0'), entry.staff || 'Staff', entry.date || '2026-11-11');
+        imgUrl = up.thumbnailUrl;
+        savedThumbnailUrl = up.thumbnailUrl;
+        savedFileId = up.fileId;
+      }
+      entries.push({
+        id: entry.id || nextId,
+        staff: entry.staff || 'Demo Staff 1',
+        paidBy: entry.paidBy || 'Demo Manager',
+        date: entry.date || '2026-11-11',
+        category: entry.category || 'Travelling',
+        remarks: entry.remarks || 'Travelling',
+        received: Number(entry.received || 0),
+        expense: Number(entry.expense || 0),
+        billAmt: Number(entry.billAmt !== undefined ? entry.billAmt : (entry.expense || 0)),
+        billNote: entry.billNote || 'Cash Memo',
+        pendingRemark: Boolean(entry.pendingRemark),
+        imgData: imgUrl
+      });
+    } else if (action === 'updateEntry') {
+      const updated = payload.entry || {};
+      let imgUrl = updated.imgData || '';
+      if (imgUrl &amp;&amp; imgUrl.indexOf('data:image/') === 0) {
+        const up = saveBase64ReceiptToDrive_(imgUrl, updated.voucherNo || 'DEMO01-Nov_01', updated.staff || 'Staff', updated.date || '2026-11-01');
+        imgUrl = up.thumbnailUrl;
+        savedThumbnailUrl = up.thumbnailUrl;
+        savedFileId = up.fileId;
+      }
+      entries = entries.map(item => Number(item.id) === Number(updated.id) ? {
+        ...item,
+        ...updated,
+        expense: Number(updated.expense !== undefined ? updated.expense : item.expense),
+        billAmt: Number(updated.billAmt !== undefined ? updated.billAmt : item.billAmt),
+        pendingRemark: Boolean(updated.pendingRemark),
+        imgData: imgUrl || item.imgData || ''
+      } : item);
+    } else if (action === 'deleteEntry') {
+      entries = entries.filter(item => Number(item.id) !== Number(payload.id));
+    } else if (action === 'syncAll' &amp;&amp; Array.isArray(payload.entries)) {
+      entries = payload.entries.map((item, idx) => {
+        let imgUrl = item.imgData || '';
+        if (imgUrl &amp;&amp; imgUrl.indexOf('data:image/') === 0) {
+          imgUrl = saveBase64ReceiptToDrive_(imgUrl, 'DEMO01-Nov_' + String(idx + 1).padStart(2, '0'), item.staff || 'Staff', item.date || '2026-11-01').thumbnailUrl;
+        }
+        return { ...item, id: Number(item.id) || (idx + 1), imgData: imgUrl };
+      });
+    }
+
+    const enriched = writeAllEntriesToSheetAndHoTabs_(entries);
+    return jsonResponse_({ status: 'success', action: action, thumbnailUrl: savedThumbnailUrl, fileId: savedFileId, entries: enriched });
+  } catch (err) {
+    return jsonResponse_({ status: 'error', message: err.toString() });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function saveBase64ReceiptToDrive_(base64DataUrl, voucherNo, staff, dateStr) {
+  const parts = base64DataUrl.split(',');
+  if (parts.length &lt; 2) return { fileId: '', thumbnailUrl: base64DataUrl };
+  const decoded = Utilities.base64Decode(parts[1]);
+  const blob = Utilities.newBlob(decoded, 'image/jpeg', voucherNo + '_' + staff + '_' + dateStr + '.jpg');
+  const file = DriveApp.getFolderById(PHOTO_FOLDER_ID).createFile(blob);
+  return { fileId: file.getId(), thumbnailUrl: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&amp;sz=w1000' };
+}
+
+function readAllEntriesFromSheet_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(DUMP_TAB_NAME);
+  if (!sheet || sheet.getLastRow() &lt; START_ROW) return [];
+  const values = sheet.getRange(START_ROW, 1, sheet.getLastRow() - START_ROW + 1, 14).getValues();
+  const entries = [];
+  for (let i = 0; i &lt; values.length; i++) {
+    const r = values[i];
+    if (!r[0] &amp;&amp; !r[5] &amp;&amp; !r[9]) continue;
+    const exp = Number(r[9] || 0);
+    entries.push({
+      id: i + 1,
+      staff: String(r[0] || 'Demo Staff 1').trim(),
+      paidBy: String(r[1] || 'Demo Manager').trim(),
+      date: normalizeToIsoDate_(r[2]),
+      voucherNo: 'DEMO01-Nov_' + String(entries.length + 1).padStart(2, '0'),
+      category: String(r[4] || 'Travelling').trim(),
+      remarks: String(r[5] || '').trim(),
+      received: Number(r[8] || 0),
+      expense: exp,
+      billNote: String(r[11] || 'Cash Memo').trim(),
+      billAmt: r[12] !== '' &amp;&amp; r[12] !== null ? Number(r[12]) : exp,
+      pendingRemark: String(r[5] || '').indexOf('Pending Remark') !== -1,
+      imgData: String(r[13] || '').trim()
+    });
+  }
+  return entries;
+}
+
+function writeAllEntriesToSheetAndHoTabs_(entries) {
+  entries.sort((a, b) => String(a.date).localeCompare(String(b.date)) || ((a.id || 0) - (b.id || 0)));
+  let running = 0;
+  const enriched = entries.map((item, idx) => {
+    const voucherNo = 'DEMO01-Nov_' + String(idx + 1).padStart(2, '0');
+    const opening = running;
+    const rec = Number(item.received) || 0;
+    const exp = Number(item.expense) || 0;
+    const closing = opening + rec - exp;
+    running = closing;
+    const day = parseInt(String(item.date || '2026-11-01').split('-')[2], 10) || 1;
+    const bucket = day &lt;= 10 ? 1 : day &lt;= 20 ? 2 : 3;
+    const targetSheet = bucket === 1 ? HO_TAB_1_10 : bucket === 2 ? HO_TAB_11_20 : HO_TAB_21_30;
+    return {
+      ...item,
+      id: idx + 1,
+      voucherNo,
+      opening,
+      received: rec,
+      expense: exp,
+      closing,
+      bucket,
+      targetSheet,
+      billAmt: item.billAmt !== undefined ? Number(item.billAmt) : exp,
+      pendingRemark: String(item.remarks || '').indexOf('Pending Remark') !== -1
+    };
+  });
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const dumpSheet = ss.getSheetByName(DUMP_TAB_NAME);
+  if (dumpSheet) {
+    const maxClear = Math.max(dumpSheet.getLastRow(), START_ROW + enriched.length + 5);
+    dumpSheet.getRange(START_ROW, 1, maxClear - START_ROW + 1, 14).clearContent();
+    if (enriched.length &gt; 0) {
+      dumpSheet.getRange(START_ROW, 1, enriched.length, 14).setValues(enriched.map(r => [
+        r.staff, r.paidBy, formatDisplayDate_(r.date), r.voucherNo, r.category, r.remarks,
+        r.targetSheet, r.opening, r.received, r.expense, r.closing, r.billNote, r.billAmt, r.imgData || ''
+      ]));
+    }
+  }
+  syncHoPeriodSheet_(ss, HO_TAB_1_10, enriched.filter(x => x.bucket === 1 &amp;&amp; x.expense &gt; 0));
+  syncHoPeriodSheet_(ss, HO_TAB_11_20, enriched.filter(x => x.bucket === 2 &amp;&amp; x.expense &gt; 0));
+  syncHoPeriodSheet_(ss, HO_TAB_21_30, enriched.filter(x => x.bucket === 3 &amp;&amp; x.expense &gt; 0));
+  return enriched;
+}
+
+function syncHoPeriodSheet_(ss, tabName, rows) {
+  const sheet = ss.getSheetByName(tabName);
+  if (!sheet) return;
+  sheet.getRange(12, 2, 60, 5).clearContent();
+  if (rows.length &gt; 0) {
+    sheet.getRange(12, 2, Math.min(rows.length, 60), 5).setValues(rows.slice(0, 60).map(r => [
+      formatDisplayDate_(r.date), r.remarks, r.category, r.voucherNo, r.expense
+    ]));
+  }
+}
+
+function normalizeToIsoDate_(val) {
+  if (!val) return '2026-11-01';
+  if (Object.prototype.toString.call(val) === '[object Date]' &amp;&amp; !isNaN(val.getTime())) {
+    return Utilities.formatDate(val, 'Asia/Kolkata', 'yyyy-MM-dd');
+  }
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  return !isNaN(d.getTime()) ? Utilities.formatDate(d, 'Asia/Kolkata', 'yyyy-MM-dd') : '2026-11-01';
+}
+
+function formatDisplayDate_(iso) {
+  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const p = String(iso || '2026-11-01').split('-');
+  return p.length === 3 ? (p[2] + ' ' + (m[(parseInt(p[1], 10) || 11) - 1] || 'Nov') + ' ' + p[0].slice(-2)) : iso;
+}
+
+function jsonResponse_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const HO_CATEGORIES = [
+      "Refreshment- Food",
+      "Store Exp",
+      "Courier",
+      "Staff Welfare",
+      "BTL Gift",
+      "BTL Activity Exp",
+      "Printing & Stationary",
+      "Repair & Maint.",
+      "Event Exp",
+      "Accomodation",
+      "Travelling",
+      "Telephone",
+      "Others"
+    ];
+
+    const STAFF_LIST = [
+      { name: "Demo Manager", advance: 0 },
+      { name: "Demo Staff 3", advance: 0 },
+      { name: "Demo Staff 4", advance: 0 },
+      { name: "Demo Staff 5", advance: 0 },
+      { name: "Demo Staff 2", advance: 0 },
+      { name: "Demo Staff 6", advance: 0 },
+      { name: "Demo Staff 1", advance: 0 },
+      { name: "Demo Staff 7", advance: 0 },
+      { name: "Demo Staff 8", advance: 0 }
+    ];
+
+    // Synthetic entries for the public demo only.
+    const INITIAL_ENTRIES = [
+      { id: 1, staff: "Demo Staff 1", paidBy: "Demo Manager", date: "2026-11-11", category: "Travelling", remarks: "Sample local journey", received: 0, expense: 100, billAmt: 100, billNote: "Demo receipt", pendingRemark: false, imgData: "" },
+      { id: 2, staff: "Demo Staff 2", paidBy: "Demo Manager", date: "2026-11-12", category: "Courier", remarks: "Sample parcel delivery", received: 0, expense: 80, billAmt: 80, billNote: "Demo receipt", pendingRemark: true, imgData: "" },
+      { id: 3, staff: "Demo Staff 3", paidBy: "Demo Manager", date: "2026-11-13", category: "Store Exp", remarks: "Sample stationery purchase", received: 0, expense: 150, billAmt: 150, billNote: "Demo receipt", pendingRemark: false, imgData: "" }
+    ];
+
+    const STORAGE_KEY = "francis_public_demo_entries_v1";
+    const GAS_URL_KEY = "francis_public_demo_gas_url";
+
+    let entries = [];
+    let activeTab = "form";
+    let activeHoPeriod = 1;
+    let activeVaultFilter = "ALL";
+    let isManagerUnlocked = false;
+    let currentDraftImgData = "";  // Holds compressed 800px JPEG 0.7 Base64 string in Tab 1
+    let scanningRowId = null;
+    let vaultTargetRowId = null;
+
+    function sortEntriesChronologically() {
+      entries.sort((a, b) => {
+        if (a.date !== b.date) return String(a.date).localeCompare(String(b.date));
+        return (Number(a.id) || 0) - (Number(b.id) || 0);
+      });
+    }
+
+    function loadState() {
+      try {
+        const savedV4 = localStorage.getItem(STORAGE_KEY);
+        if (savedV4) {
+          entries = JSON.parse(savedV4);
+        } else {
+          entries = INITIAL_ENTRIES.map(e => ({ ...e }));
+        }
+        sortEntriesChronologically();
+        saveState();
+      } catch (err) {
+        entries = INITIAL_ENTRIES.map(e => ({ ...e }));
+        sortEntriesChronologically();
+      }
+
+      const savedGasUrl = localStorage.getItem(GAS_URL_KEY) || "";
+      const gasInp = document.getElementById("inpGasWebAppUrl");
+      if (gasInp) gasInp.value = savedGasUrl;
+      updateGasConnectionBadge(savedGasUrl);
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      } catch (err) {
+        showToast("Storage limit reached — keep receipt images compressed.", "⚠️");
+      }
+    }
+
+    function formatVoucherNo(index1Based) {
+      return "DEMO01-Nov_" + String(index1Based).padStart(2, "0");
+    }
+
+    function getMatchStatus(exp, rec, billAmt) {
+      const target = exp > 0 ? exp : rec;
+      const b = Number(billAmt) || 0;
+      if (b <= 0) return "NO BILL PHOTO";
+      if (Math.abs(b - target) < 0.01) return "MATCHED";
+      return "MISMATCH";
+    }
+
+    function getPeriodBucket(dateStr) {
+      if (!dateStr) return 1;
+      const parts = String(dateStr).split("-");
+      const day = parseInt(parts[2], 10) || 1;
+      if (day <= 10) return 1;
+      if (day <= 20) return 2;
+      return 3;
+    }
+
+    function getPeriodName(bucket) {
+      if (bucket === 1) return "HO Petty Cash - 1st to 10th Nov";
+      if (bucket === 2) return "HO Petty Cash - 11th to 20th Nov";
+      return "HO Petty Cash - 21st to 30th Nov";
+    }
+
+    function formatShortDate(dateStr) {
+      if (!dateStr) return "";
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const parts = String(dateStr).split("-");
+      if (parts.length !== 3) return dateStr;
+      const y = parts[0].slice(-2);
+      const m = months[parseInt(parts[1], 10) - 1] || "Nov";
+      const d = parts[2];
+      return `${d} ${m} ${y}`;
+    }
+
+    /**
+     * Converts any Google Drive sharing link or file ID into a direct high-res thumbnail URL:
+     * https://drive.google.com/thumbnail?id=FILE_ID&sz=w1000
+     */
+    function convertDriveLinkToThumbnail(inputStr) {
+      const raw = (inputStr || "").trim();
+      if (!raw) return "";
+      if (raw.startsWith("data:image/")) return raw;
+
+      // Match /d/FILE_ID or id=FILE_ID
+      const dMatch = raw.match(/\/d\/([a-zA-Z0-9_-]{15,})/);
+      if (dMatch && dMatch[1]) {
+        return `https://drive.google.com/thumbnail?id=${dMatch[1]}&sz=w1000`;
+      }
+      const idMatch = raw.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);
+      if (idMatch && idMatch[1]) {
+        return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
+      }
+      // If user pasted a raw Drive file ID
+      if (/^[a-zA-Z0-9_-]{20,}$/.test(raw)) {
+        return `https://drive.google.com/thumbnail?id=${raw}&sz=w1000`;
+      }
+      return raw;
+    }
+
+    /**
+     * Generates a clean SVG receipt preview data URL when a historical voucher does not yet have a custom photo attached,
+     * so every 4-Up Print card renders a visible receipt inside the h-44 preview box.
+     */
+    function buildDigitalSlipDataUrl(r) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="260" viewBox="0 0 480 260">
+        <rect width="480" height="260" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" rx="10"/>
+        <rect x="16" y="14" width="448" height="36" fill="#0f172a" rx="6"/>
+        <text x="28" y="37" fill="#f8fafc" font-family="Arial, sans-serif" font-size="13" font-weight="bold">LIMELIGHT JUHU (DEMO01) • VERIFIED VOUCHER SLIP</text>
+        <text x="452" y="37" fill="#fcd34d" font-family="monospace" font-size="13" font-weight="bold" text-anchor="end">${r.voucherNo}</text>
+        <text x="24" y="74" fill="#334155" font-family="Arial, sans-serif" font-size="12" font-weight="bold">Date: ${formatShortDate(r.date)}   |   Staff: ${r.staff}   |   Paid By: ${r.paidBy}</text>
+        <text x="24" y="100" fill="#0f172a" font-family="Arial, sans-serif" font-size="13" font-weight="bold">Particulars: ${(r.remarks || "").slice(0, 48).replace(/&/g, "&amp;").replace(/</g, "&lt;")}</text>
+        <text x="24" y="124" fill="#475569" font-family="Arial, sans-serif" font-size="12">Category: ${r.category}   |   Proof Type: ${r.billNote || "Cash Memo"}</text>
+        <rect x="24" y="142" width="432" height="52" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1.5" rx="8"/>
+        <text x="40" y="173" fill="#065f46" font-family="Arial, sans-serif" font-size="16" font-weight="bold">Entered: Rs. ${r.expense}   =   Bill Verified: Rs. ${r.billAmt}</text>
+        <text x="440" y="173" fill="#047857" font-family="Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="end">[${r.matchStatus}]</text>
+        <text x="240" y="228" fill="#64748b" font-family="Arial, sans-serif" font-size="11" text-anchor="middle">Digital Voucher Record • Use "Attach Bill Photo / Paste Drive Link" to replace with screenshot</text>
+      </svg>`;
+      return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    }
+
+    /**
+     * Compresses an uploaded image File via HTML5 <canvas> (max width 800px, JPEG 0.7 quality)
+     * into a compact Base64 data URL (imgData) for instant Vault rendering & Google Drive upload.
+     */
+    function compressImageFileToBase64(file, maxWidth = 800, quality = 0.7) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              const ratio = maxWidth / w;
+              w = maxWidth;
+              h = Math.round(h * ratio);
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+            resolve(compressedDataUrl);
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function showToast(msg, icon = "✅") {
+      const banner = document.getElementById("toastBanner");
+      document.getElementById("toastIcon").textContent = icon;
+      document.getElementById("toastText").textContent = msg;
+      banner.classList.remove("hidden");
+      setTimeout(() => {
+        banner.classList.add("hidden");
+      }, 3400);
+    }
+
+    function copyTextToClipboard(text, label) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(label + " copied to clipboard!");
+        }).catch(() => {
+          fallbackCopy(text, label);
+        });
+      } else {
+        fallbackCopy(text, label);
+      }
+    }
+
+    function fallbackCopy(text, label) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        showToast(label + " copied to clipboard!");
+      } catch (err) {
+        showToast("Could not copy automatically.", "⚠️");
+      }
+      document.body.removeChild(ta);
+    }
+
+    function updateGasConnectionBadge(url) {
+      const badge = document.getElementById("gasConnectionBadge");
+      const pill = document.getElementById("syncStatusPill");
+      if (url && url.startsWith("https://script.google.com/")) {
+        badge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+        badge.textContent = "✅ Connected to Google Sheet Web App";
+        pill.className = "text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold";
+        pill.textContent = "☁️ Live Multi-Phone Sync Active";
+      } else {
+        badge.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300";
+        badge.textContent = "⚡ Local Mode (Paste Web App URL in Tab 7)";
+        pill.className = "text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-medium";
+        pill.textContent = "💾 Local + Cloud Ready";
+      }
+    }
+
+    /**
+     * Multi-Phone Live Sync: Pulls latest entries from Google Sheet via fetch GET
+     */
+    async function syncPullFromGoogleSheet(silent = false) {
+      const gasUrl = (localStorage.getItem(GAS_URL_KEY) || "").trim();
+      if (!gasUrl || !gasUrl.startsWith("https://script.google.com/")) {
+        if (!silent) {
+          showToast("Paste your deployed Google Apps Script Web App URL in Tab 7 first.", "ℹ️");
+        }
+        return;
+      }
+      try {
+        if (!silent) showToast("Syncing latest vouchers from Google Sheet...", "🔄");
+        const sep = gasUrl.includes("?") ? "&" : "?";
+        const getEndpoint = gasUrl + sep + "action=getEntries&t=" + Date.now();
+        const res = await fetch(getEndpoint, {
+          method: "GET",
+          redirect: "follow"
+        });
+        const data = await res.json();
+        if (data && data.status === "success" && Array.isArray(data.entries) && data.entries.length > 0) {
+          entries = data.entries;
+          sortEntriesChronologically();
+          saveState();
+          renderAll();
+          const tsEl = document.getElementById("lastSyncTimestamp");
+          if (tsEl) tsEl.textContent = "Last Sync: " + new Date().toLocaleTimeString("en-IN");
+          if (!silent) showToast(`Synced ${entries.length} vouchers from Master Google Sheet!`);
+        } else if (!silent) {
+          showToast("Connected to Sheet (0 remote rows found; keeping local rows).", "ℹ️");
+        }
+      } catch (err) {
+        if (!silent) showToast("Cloud sync offline — saved locally on device.", "⚠️");
+      }
+    }
+
+    /**
+     * Multi-Phone Live Sync: Sends POST payload (addEntry, updateEntry, deleteEntry, syncAll) to Google Apps Script
+     */
+    async function syncPostToGoogleSheet(payload, silent = false) {
+      const gasUrl = (localStorage.getItem(GAS_URL_KEY) || "").trim();
+      if (!gasUrl || !gasUrl.startsWith("https://script.google.com/")) {
+        return null;
+      }
+      try {
+        const res = await fetch(gasUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload),
+          redirect: "follow"
+        });
+        const data = await res.json();
+        if (data && data.status === "success") {
+          if (Array.isArray(data.entries) && data.entries.length > 0) {
+            entries = data.entries;
+            sortEntriesChronologically();
+            saveState();
+            renderAll();
+          }
+          const tsEl = document.getElementById("lastSyncTimestamp");
+          if (tsEl) tsEl.textContent = "Last Sync: " + new Date().toLocaleTimeString("en-IN");
+          if (!silent) showToast("Synced live with Master Google Sheet & Drive!");
+          return data;
+        }
+      } catch (err) {
+        if (!silent) showToast("Saved on device (Cloud sync will retry when online).", "ℹ️");
+      }
+      return null;
+    }
+
+    function updateLiveOcrBadge() {
+      const exp = Number(document.getElementById("inpAmount").value) || 0;
+      const rec = Number(document.getElementById("inpCashReceived").value) || 0;
+      const billAmt = Number(document.getElementById("inpBillScannedAmt").value) || 0;
+      const status = getMatchStatus(exp, rec, billAmt);
+      const badge = document.getElementById("ocrMatchBadge");
+      const target = exp > 0 ? exp : rec;
+
+      if (status === "NO BILL PHOTO" && !currentDraftImgData) {
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700";
+        badge.textContent = "⏳ NO BILL PHOTO";
+      } else if (status === "MATCHED") {
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+        badge.textContent = `✅ MATCHED! Bill ₹${billAmt} = Entered ₹${target}`;
+      } else {
+        const diff = Math.abs(billAmt - target);
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300";
+        badge.textContent = `⚠️ MISMATCH: Bill ₹${billAmt} vs ₹${target} (Diff ₹${diff})`;
+      }
+    }
+
+    function updateRoutingBanner() {
+      const dateVal = document.getElementById("inpExpenseDate").value;
+      const bucket = getPeriodBucket(dateVal);
+      const banner = document.getElementById("routingBanner");
+      const nameEl = document.getElementById("routingSheetName");
+      const winEl = document.getElementById("routingDateWindow");
+
+      banner.className = "p-3.5 rounded-xl border flex items-center justify-between gap-3 ";
+      if (bucket === 1) {
+        banner.classList.add("bg-emerald-50", "border-emerald-200");
+        nameEl.textContent = "HO Petty Cash - 1st to 10th Nov";
+        winEl.textContent = "Dates: 1st–10th Nov";
+      } else if (bucket === 2) {
+        banner.classList.add("bg-blue-50", "border-blue-200");
+        nameEl.textContent = "HO Petty Cash - 11th to 20th Nov";
+        winEl.textContent = "Dates: 11th–20th Nov";
+      } else {
+        banner.classList.add("bg-amber-50", "border-amber-200");
+        nameEl.textContent = "HO Petty Cash - 21st to 30th Nov";
+        winEl.textContent = "Dates: 21st–30th Nov (End of Month)";
+      }
+    }
+
+    function computeEnrichedEntries() {
+      sortEntriesChronologically();
+      let running = 0;
+      return entries.map((item, idx) => {
+        const voucherNo = formatVoucherNo(idx + 1);
+        const opening = running;
+        const rec = Number(item.received) || 0;
+        const exp = Number(item.expense) || 0;
+        const billAmt = item.billAmt !== undefined ? Number(item.billAmt) : exp;
+        const closing = opening + rec - exp;
+        running = closing;
+        const bucket = getPeriodBucket(item.date);
+        const matchStatus = getMatchStatus(exp, rec, billAmt);
+        return {
+          ...item,
+          voucherNo,
+          opening,
+          received: rec,
+          expense: exp,
+          billAmt,
+          matchStatus,
+          closing,
+          bucket,
+          targetSheet: getPeriodName(bucket),
+          imgData: item.imgData || ""
+        };
+      });
+    }
+
+    function applyLockUI() {
+      const managerEls = document.querySelectorAll(".manager-only");
+      const lockBtn = document.getElementById("btnToggleManagerLock");
+      const badge = document.getElementById("modeStatusBadge");
+
+      if (isManagerUnlocked) {
+        managerEls.forEach(el => el.classList.remove("hidden"));
+        lockBtn.textContent = "🔒 Close Demo View";
+        badge.className = "text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold";
+        badge.textContent = "🧪 Demo View Open — Not Secure";
+      } else {
+        managerEls.forEach(el => el.classList.add("hidden"));
+        lockBtn.textContent = "🧪 Open Demo Manager View";
+        badge.className = "text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold";
+        badge.textContent = "🧪 Public Demo — Not Secure";
+        if (activeTab !== "form") {
+          switchTab("form");
+        }
+      }
+    }
+
+    function renderAll() {
+      const now = new Date();
+      document.getElementById("inpUpdatedTime").value = now.toLocaleString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+      });
+
+      const enriched = computeEnrichedEntries();
+      const nextVoucher = formatVoucherNo(enriched.length + 1);
+
+      document.getElementById("kpiNextVoucher").textContent = nextVoucher;
+      document.getElementById("formVoucherPill").textContent = nextVoucher;
+      document.getElementById("inpVoucherNo").value = nextVoucher;
+
+      const b1 = enriched.filter(e => e.bucket === 1 && e.expense > 0);
+      const b2 = enriched.filter(e => e.bucket === 2 && e.expense > 0);
+      const b3 = enriched.filter(e => e.bucket === 3 && e.expense > 0);
+
+      const sumExp = arr => arr.reduce((s, x) => s + x.expense, 0);
+      const sumRec = arr => arr.reduce((s, x) => s + x.received, 0);
+
+      const t1 = sumExp(b1);
+      const t2 = sumExp(b2);
+      const t3 = sumExp(b3);
+      const grandExp = sumExp(enriched);
+      const grandRec = sumRec(enriched);
+      const netBal = grandRec - grandExp;
+
+      document.getElementById("kpiHo1Total").textContent = "₹" + t1.toLocaleString("en-IN") + ".00";
+      document.getElementById("kpiHo1Sub").textContent = b1.length + " vouchers";
+      document.getElementById("kpiHo2Total").textContent = "₹" + t2.toLocaleString("en-IN") + ".00";
+      document.getElementById("kpiHo2Sub").textContent = b2.length + " vouchers";
+      document.getElementById("kpiHo3Total").textContent = "₹" + t3.toLocaleString("en-IN") + ".00";
+      document.getElementById("kpiHo3Sub").textContent = b3.length + " vouchers";
+      document.getElementById("kpiGrandExpense").textContent = "₹" + grandExp.toLocaleString("en-IN") + ".00";
+      document.getElementById("kpiNetBalance").textContent = "Net Balance: ₹" + netBal.toLocaleString("en-IN") + ".00";
+
+      document.getElementById("badgeDumpCount").textContent = String(enriched.length);
+      document.getElementById("badgeHo1Count").textContent = String(b1.length);
+      document.getElementById("badgeHo2Count").textContent = String(b2.length);
+      document.getElementById("badgeHo3Count").textContent = String(b3.length);
+
+      const pendingCount = enriched.filter(e => e.pendingRemark).length;
+      document.getElementById("pendingRemarksBadge").textContent = pendingCount + " items";
+
+      renderDumpTable(enriched);
+      renderStaffSummary(enriched);
+      renderHoSheet(enriched, activeHoPeriod);
+      renderVaultGrid(enriched);
+      updateRoutingBanner();
+      updateLiveOcrBadge();
+      applyLockUI();
+    }
+
+    function renderDumpTable(enriched) {
+      const staffFilter = document.getElementById("filterDumpStaff").value;
+      const statusFilter = document.getElementById("filterMatchStatus").value;
+      const tbody = document.getElementById("dumpTableBody");
+      tbody.innerHTML = "";
+
+      const filtered = enriched.filter(e => {
+        const matchStaff =
+          staffFilter === "ALL" ? true :
+          staffFilter === "PENDING_BIPUL" ? (e.staff === "Demo Staff 2" && (e.pendingRemark || e.date <= "2026-11-03")) :
+          e.staff === staffFilter;
+        const matchStat = statusFilter === "ALL" || e.matchStatus === statusFilter;
+        return matchStaff && matchStat;
+      });
+
+      filtered.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-row-id", String(row.id));
+        tr.className = row.pendingRemark ? "bg-amber-50/70 hover:bg-amber-100/60" : "hover:bg-slate-50";
+
+        const badgeColor = row.bucket === 1
+          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+          : row.bucket === 2
+          ? "bg-blue-100 text-blue-800 border-blue-200"
+          : "bg-amber-100 text-amber-800 border-amber-200";
+
+        const periodShort = row.bucket === 1 ? "1st–10th Nov" : row.bucket === 2 ? "11th–20th Nov" : "21st–30th Nov";
+
+        const statusBadge = row.matchStatus === "MATCHED"
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">MATCHED</span>`
+          : row.matchStatus === "MISMATCH"
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">MISMATCH (Diff ₹${Math.abs(row.billAmt - row.expense)})</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">NO BILL PHOTO</span>`;
+
+        tr.innerHTML = `
+          <td class="py-2 px-2.5 font-semibold text-slate-800">${row.staff}</td>
+          <td class="py-2 px-2.5 text-slate-600">${row.paidBy}</td>
+          <td class="py-2 px-2.5">
+            <input type="date" data-edit-date="${row.id}" value="${row.date}" class="text-xs rounded border border-slate-300 px-1.5 py-1 bg-white font-medium text-slate-800" />
+          </td>
+          <td class="py-2 px-2.5 font-mono font-bold text-indigo-700">${row.voucherNo}</td>
+          <td class="py-2 px-2.5">
+            <select data-edit-cat="${row.id}" aria-label="Category" class="text-xs rounded border border-slate-300 px-1.5 py-1 bg-white">
+              ${HO_CATEGORIES.map(c => `<option value="${c}" ${c === row.category ? "selected" : ""}>${c}</option>`).join("")}
+            </select>
+          </td>
+          <td class="py-2 px-2.5">
+            <input type="text" data-edit-remark="${row.id}" value="${row.remarks.replace(/"/g, '&quot;')}" class="w-full text-xs rounded border ${row.pendingRemark ? 'border-amber-400 bg-amber-50 font-semibold text-amber-950' : 'border-slate-300 bg-white'} px-2 py-1" />
+          </td>
+          <td class="py-2 px-2.5">
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeColor}">${periodShort}</span>
+          </td>
+          <td class="py-2 px-2.5 text-right">
+            <input type="number" data-edit-exp="${row.id}" value="${row.expense}" class="w-20 text-right text-xs font-mono font-bold rounded border border-slate-300 px-1.5 py-1 bg-white text-slate-900" />
+          </td>
+          <td class="py-2 px-2.5 text-right">
+            <input type="number" data-edit-billamt="${row.id}" value="${row.billAmt}" class="w-20 text-right text-xs font-mono rounded border border-slate-300 px-1.5 py-1 bg-white text-indigo-700 font-semibold" />
+          </td>
+          <td class="py-2 px-2.5 text-center">${statusBadge}</td>
+          <td class="py-2 px-2.5 text-right font-mono font-semibold ${row.closing < 0 ? 'text-rose-600' : 'text-slate-800'}">₹${row.closing}</td>
+          <td class="py-2 px-2.5 text-center whitespace-nowrap">
+            <button type="button" data-save-row="${row.id}" title="Save Row Changes" class="text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2 py-1 rounded mr-1">💾 Save</button>
+            <button type="button" data-scan-id="${row.id}" title="Attach & OCR Scan Bill" class="text-[11px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-2 py-1 rounded border border-indigo-200 mr-1">📷</button>
+            <button type="button" data-delete-id="${row.id}" title="Delete Row" class="text-rose-600 hover:text-rose-800 font-bold px-1.5 py-1 rounded">✕</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Per-row Save button handler
+      tbody.querySelectorAll("[data-save-row]").forEach(btn => {
+        btn.addEventListener("click", e => {
+          const id = Number(e.currentTarget.getAttribute("data-save-row"));
+          saveSingleRowFromDom(id, true);
+        });
+      });
+
+      // Instant change listeners for smooth auto-recalculation
+      tbody.querySelectorAll("[data-edit-date], [data-edit-cat], [data-edit-remark], [data-edit-exp], [data-edit-billamt]").forEach(inp => {
+        inp.addEventListener("change", e => {
+          const tr = e.target.closest("tr[data-row-id]");
+          if (!tr) return;
+          const id = Number(tr.getAttribute("data-row-id"));
+          saveSingleRowFromDom(id, false);
+        });
+      });
+
+      tbody.querySelectorAll("[data-scan-id]").forEach(btn => {
+        btn.addEventListener("click", e => {
+          scanningRowId = Number(e.currentTarget.getAttribute("data-scan-id"));
+          const rowInput = document.getElementById("inpRowOcrFile");
+          rowInput.value = "";
+          rowInput.click();
+        });
+      });
+
+      tbody.querySelectorAll("[data-delete-id]").forEach(btn => {
+        btn.addEventListener("click", e => {
+          const id = Number(e.currentTarget.getAttribute("data-delete-id"));
+          entries = entries.filter(x => x.id !== id);
+          saveState();
+          renderAll();
+          syncPostToGoogleSheet({ action: "deleteEntry", id }, true);
+          showToast("Deleted entry & re-sequenced DEMO01-Nov vouchers", "🗑️");
+        });
+      });
+    }
+
+    function saveSingleRowFromDom(rowId, showExplicitToast = true) {
+      const tbody = document.getElementById("dumpTableBody");
+      const tr = tbody.querySelector(`tr[data-row-id="${rowId}"]`);
+      const item = entries.find(x => x.id === rowId);
+      if (!tr || !item) return;
+
+      const dateInp = tr.querySelector(`[data-edit-date="${rowId}"]`);
+      const catSel = tr.querySelector(`[data-edit-cat="${rowId}"]`);
+      const remInp = tr.querySelector(`[data-edit-remark="${rowId}"]`);
+      const expInp = tr.querySelector(`[data-edit-exp="${rowId}"]`);
+      const billInp = tr.querySelector(`[data-edit-billamt="${rowId}"]`);
+
+      if (dateInp && dateInp.value) item.date = dateInp.value;
+      if (catSel && catSel.value) item.category = catSel.value;
+      if (remInp) {
+        item.remarks = remInp.value.trim() || "Travelling";
+        item.pendingRemark = item.remarks.includes("Pending Remark");
+      }
+      if (expInp) item.expense = Number(expInp.value) || 0;
+      if (billInp) item.billAmt = Number(billInp.value) || 0;
+
+      sortEntriesChronologically();
+      saveState();
+      renderAll();
+
+      const updatedIdx = entries.findIndex(x => x.id === rowId);
+      const vchNo = formatVoucherNo(updatedIdx + 1);
+      syncPostToGoogleSheet({ action: "updateEntry", entry: { ...item, voucherNo: vchNo } }, true);
+
+      if (showExplicitToast) {
+        showToast(`Saved changes for ${vchNo} → Recalculated HO sheets, KPIs & 4-Up Print Vault!`);
+      }
+    }
+
+    function saveAllDumpRowsFromDom() {
+      const tbody = document.getElementById("dumpTableBody");
+      const rows = tbody.querySelectorAll("tr[data-row-id]");
+      rows.forEach(tr => {
+        const rowId = Number(tr.getAttribute("data-row-id"));
+        const item = entries.find(x => x.id === rowId);
+        if (!item) return;
+        const dateInp = tr.querySelector(`[data-edit-date="${rowId}"]`);
+        const catSel = tr.querySelector(`[data-edit-cat="${rowId}"]`);
+        const remInp = tr.querySelector(`[data-edit-remark="${rowId}"]`);
+        const expInp = tr.querySelector(`[data-edit-exp="${rowId}"]`);
+        const billInp = tr.querySelector(`[data-edit-billamt="${rowId}"]`);
+
+        if (dateInp && dateInp.value) item.date = dateInp.value;
+        if (catSel && catSel.value) item.category = catSel.value;
+        if (remInp) {
+          item.remarks = remInp.value.trim() || "Travelling";
+          item.pendingRemark = item.remarks.includes("Pending Remark");
+        }
+        if (expInp) item.expense = Number(expInp.value) || 0;
+        if (billInp) item.billAmt = Number(billInp.value) || 0;
+      });
+
+      sortEntriesChronologically();
+      saveState();
+      renderAll();
+      syncPostToGoogleSheet({ action: "syncAll", entries }, true);
+      showToast("All Dump edits saved! 10-Day HO sheets, KPIs & 4-Up Print cards updated.");
+    }
+
+    function renderStaffSummary(enriched) {
+      const tbody = document.getElementById("staffSummaryBody");
+      tbody.innerHTML = "";
+      let totAdv = 0;
+      let totExp = 0;
+
+      STAFF_LIST.forEach(s => {
+        const exp = enriched.filter(e => e.staff === s.name).reduce((sum, x) => sum + x.expense, 0);
+        const bal = s.advance - exp;
+        totAdv += s.advance;
+        totExp += exp;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-2 px-3 font-semibold text-slate-800">${s.name}</td>
+          <td class="py-2 px-3 text-right font-mono">₹${s.advance.toLocaleString("en-IN")}</td>
+          <td class="py-2 px-3 text-right font-mono font-semibold">₹${exp.toLocaleString("en-IN")}</td>
+          <td class="py-2 px-3 text-right font-mono font-bold ${bal < 0 ? 'text-rose-600' : 'text-emerald-700'}">₹${bal.toLocaleString("en-IN")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const foot = document.createElement("tr");
+      foot.className = "bg-slate-100 font-bold border-t border-slate-300";
+      foot.innerHTML = `
+        <td class="py-2 px-3">Total</td>
+        <td class="py-2 px-3 text-right font-mono">₹${totAdv.toLocaleString("en-IN")}</td>
+        <td class="py-2 px-3 text-right font-mono">₹${totExp.toLocaleString("en-IN")}</td>
+        <td class="py-2 px-3 text-right font-mono">₹${(totAdv - totExp).toLocaleString("en-IN")}</td>
+      `;
+      tbody.appendChild(foot);
+    }
+
+    function renderHoSheet(enriched, periodBucket) {
+      const periodTitles = {
+        1: "1st Nov to 10th Nov",
+        2: "11th Nov to 20th Nov",
+        3: "21st Nov to 30th Nov"
+      };
+      document.getElementById("hoPeriodLabel").textContent = periodTitles[periodBucket] || "1st Nov to 10th Nov";
+
+      document.querySelectorAll(".ho-period-btn").forEach(btn => {
+        const p = Number(btn.getAttribute("data-hoperiod"));
+        if (p === periodBucket) {
+          btn.className = "ho-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white";
+        } else {
+          btn.className = "ho-period-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200";
+        }
+      });
+
+      const rows = enriched.filter(e => e.bucket === periodBucket && e.expense > 0);
+      const tbody = document.getElementById("hoTableBody");
+      tbody.innerHTML = "";
+
+      if (rows.length === 0) {
+        const emptyTr = document.createElement("tr");
+        emptyTr.innerHTML = `
+          <td colspan="5" class="text-center py-6 text-slate-400 italic">
+            No expenses logged for ${periodTitles[periodBucket]} yet. Add an entry with a date in this window.
+          </td>
+        `;
+        tbody.appendChild(emptyTr);
+        document.getElementById("hoVoucherSpan").textContent = "—";
+      } else {
+        document.getElementById("hoVoucherSpan").textContent = `${rows[0].voucherNo} – ${rows[rows.length - 1].voucherNo}`;
+        rows.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="text-center">${formatShortDate(r.date)}</td>
+            <td>${r.remarks}</td>
+            <td class="text-center">${r.category}</td>
+            <td class="text-center font-mono font-semibold">${r.voucherNo}</td>
+            <td class="text-right font-mono">${r.expense}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const totalAmt = rows.reduce((s, x) => s + x.expense, 0);
+      document.getElementById("hoHeaderTotal").textContent = "₹" + totalAmt.toLocaleString("en-IN") + ".00";
+      document.getElementById("hoFootTotal").textContent = totalAmt.toLocaleString("en-IN");
+      document.getElementById("hoFootNet").textContent = totalAmt.toLocaleString("en-IN");
+
+      const catBody = document.getElementById("hoCategorySummaryBody");
+      catBody.innerHTML = "";
+      HO_CATEGORIES.forEach((cat, idx) => {
+        const catSum = rows.filter(r => r.category === cat).reduce((s, x) => s + x.expense, 0);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="text-center">${idx + 1}</td>
+          <td>${cat}</td>
+          <td class="text-right font-mono ${catSum > 0 ? 'font-bold text-slate-900' : 'text-slate-400'}">${catSum > 0 ? catSum.toLocaleString("en-IN") : "-"}</td>
+        `;
+        catBody.appendChild(tr);
+      });
+      document.getElementById("hoCatTotalCell").textContent = totalAmt.toLocaleString("en-IN");
+    }
+
+    /**
+     * Renders Tab 6: 4-Up Print & Bill Vault
+     * - Filters by 10-day window (All, 1st-10th Nov, 11th-20th Nov, 21st-30th Nov)
+     * - Groups strictly into 4 cards per A4 page (.print-page-4up, 2 cols x 2 rows)
+     * - Includes h-44 w-full object-contain bg-slate-100 rounded-lg border receipt image preview box
+     * - Includes compact "📷 Attach Bill Photo / Paste Drive Link" button on every card
+     * - Includes Store Code (DEMO01 - Demo Store), Voucher No, Date, Staff Name, Paid By, HO Category,
+     *   Particulars, Entered vs Bill Amount (MATCHED badge), Receipt Image, and bottom signature lines
+     *   for "Staff Sign" and "Store Manager (Demo Manager)"
+     */
+    function renderVaultGrid(enriched) {
+      const container = document.getElementById("vaultGridContainer");
+      container.innerHTML = "";
+
+      const c1 = enriched.filter(e => e.bucket === 1).length;
+      const c2 = enriched.filter(e => e.bucket === 2).length;
+      const c3 = enriched.filter(e => e.bucket === 3).length;
+      document.getElementById("vfCountAll").textContent = String(enriched.length);
+      document.getElementById("vfCount1").textContent = String(c1);
+      document.getElementById("vfCount2").textContent = String(c2);
+      document.getElementById("vfCount3").textContent = String(c3);
+
+      document.querySelectorAll(".vault-filter-btn").forEach(btn => {
+        const f = btn.getAttribute("data-vaultfilter");
+        if (f === activeVaultFilter) {
+          btn.className = "vault-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white";
+        } else {
+          btn.className = "vault-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200";
+        }
+      });
+
+      const filtered = activeVaultFilter === "ALL"
+        ? enriched
+        : enriched.filter(e => String(e.bucket) === String(activeVaultFilter));
+
+      const pageCount = Math.max(1, Math.ceil(filtered.length / 4));
+      document.getElementById("vaultPrintSummaryText").textContent =
+        `Showing ${filtered.length} vouchers (${pageCount} A4 page${pageCount > 1 ? "s" : ""} @ 4 vouchers/page)`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-xs text-slate-500">
+            No vouchers in this 10-day window yet. Select another filter or submit a new expense in Tab 1.
+          </div>
+        `;
+        return;
+      }
+
+      // Chunk into strict groups of 4 cards per A4 page
+      for (let i = 0; i < filtered.length; i += 4) {
+        const chunk = filtered.slice(i, i + 4);
+        const pageDiv = document.createElement("div");
+        pageDiv.className = "print-page-4up";
+
+        chunk.forEach(r => {
+          const hasCustomPhoto = Boolean(r.imgData && r.imgData.trim() !== "");
+          const displaySrc = hasCustomPhoto ? r.imgData : buildDigitalSlipDataUrl(r);
+          const matchBadgeClass = r.matchStatus === "MATCHED"
+            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+            : r.matchStatus === "MISMATCH"
+            ? "bg-rose-100 text-rose-800 border border-rose-300"
+            : "bg-slate-200 text-slate-700";
+
+          const card = document.createElement("div");
+          card.className = "vault-print-card bg-white rounded-xl border border-slate-300 p-4 space-y-2.5 shadow-sm flex flex-col justify-between";
+          card.innerHTML = `
+            <div class="space-y-2">
+              <!-- Card Top Header: Store Code + Voucher No + Date -->
+              <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                <div>
+                  <div class="text-[10px] font-extrabold uppercase tracking-wider text-purple-900">Store Code: DEMO01 - Demo Store</div>
+                  <div class="font-mono font-extrabold text-xs sm:text-sm text-indigo-700">${r.voucherNo}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xs font-bold text-slate-800">${formatShortDate(r.date)}</div>
+                  <div class="text-[10px] font-semibold text-slate-500">${r.category}</div>
+                </div>
+              </div>
+
+              <!-- Staff Name, Paid By, HO Category & Particulars -->
+              <div class="grid grid-cols-3 gap-1.5 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-200">
+                <div><span class="text-slate-400 font-semibold">Staff:</span> <strong class="text-slate-800">${r.staff}</strong></div>
+                <div><span class="text-slate-400 font-semibold">Paid By:</span> <strong class="text-slate-800">${r.paidBy}</strong></div>
+                <div><span class="text-slate-400 font-semibold">Head:</span> <strong class="text-slate-800">${r.category}</strong></div>
+              </div>
+
+              <div class="text-xs font-semibold text-slate-900 leading-snug">
+                <span class="text-slate-400 font-medium">Particulars:</span> ${r.remarks}
+              </div>
+
+              <!-- Entered vs Bill Amount + MATCHED Badge -->
+              <div class="flex items-center justify-between text-xs pt-0.5">
+                <span>Entered: <strong>₹${r.expense}</strong> &nbsp;|&nbsp; Bill: <strong>₹${r.billAmt}</strong></span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${matchBadgeClass}">${r.matchStatus}</span>
+              </div>
+
+              <!-- Actual Receipt Image Preview Box (h-44 w-full object-contain bg-slate-100 rounded-lg border) -->
+              <div class="relative">
+                <img src="${displaySrc}" alt="Receipt ${r.voucherNo}" class="h-44 w-full object-contain bg-slate-100 rounded-lg border border-slate-300" />
+                <div class="flex items-center justify-between mt-1.5 no-print">
+                  <span class="text-[10px] font-semibold ${hasCustomPhoto ? 'text-emerald-700' : 'text-slate-500'}">
+                    ${hasCustomPhoto ? '✅ Custom Bill Photo Attached' : '📄 Digital Slip (Attach Photo / Drive Link)'}
+                  </span>
+                  <button type="button" data-attach-photo="${r.id}" class="text-[11px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1 rounded-lg border border-indigo-200 transition">
+                    📷 Attach Bill Photo / Paste Drive Link
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Printed Signature Lines for Staff Sign and Store Manager (Demo Manager) -->
+            <div class="pt-5 mt-2 border-t border-slate-200 grid grid-cols-2 gap-6 text-[11px] text-slate-700">
+              <div class="border-t border-slate-400 pt-1 text-center font-semibold">
+                Staff Sign (${r.staff})
+              </div>
+              <div class="border-t border-slate-400 pt-1 text-center font-semibold">
+                Store Manager (Demo Manager)
+              </div>
+            </div>
+          `;
+          pageDiv.appendChild(card);
+        });
+
+        container.appendChild(pageDiv);
+      }
+
+      container.querySelectorAll("[data-attach-photo]").forEach(btn => {
+        btn.addEventListener("click", e => {
+          const rowId = Number(e.currentTarget.getAttribute("data-attach-photo"));
+          openVaultPhotoModal(rowId);
+        });
+      });
+    }
+
+    function openVaultPhotoModal(rowId) {
+      vaultTargetRowId = rowId;
+      const enriched = computeEnrichedEntries();
+      const item = enriched.find(x => x.id === rowId);
+      if (!item) return;
+
+      document.getElementById("vaultModalSub").textContent =
+        `${item.voucherNo} • ${formatShortDate(item.date)} • ${item.staff} (₹${item.expense})`;
+      document.getElementById("inpVaultModalFile").value = "";
+      document.getElementById("inpVaultDriveLink").value =
+        (item.imgData && !item.imgData.startsWith("data:image/")) ? item.imgData : "";
+      document.getElementById("vaultPhotoModal").classList.remove("hidden");
+    }
+
+    function switchTab(tabKey) {
+      if (!isManagerUnlocked && tabKey !== "form") {
+        document.getElementById("pinModal").classList.remove("hidden");
+        return;
+      }
+      activeTab = tabKey;
+      const views = {
+        form: document.getElementById("view-form"),
+        dump: document.getElementById("view-dump"),
+        ho: document.getElementById("view-ho"),
+        vault: document.getElementById("view-vault"),
+        script: document.getElementById("view-script")
+      };
+
+      Object.values(views).forEach(v => v.classList.add("hidden"));
+
+      if (tabKey === "ho1" || tabKey === "ho2" || tabKey === "ho3") {
+        activeHoPeriod = tabKey === "ho1" ? 1 : tabKey === "ho2" ? 2 : 3;
+        views.ho.classList.remove("hidden");
+      } else if (views[tabKey]) {
+        views[tabKey].classList.remove("hidden");
+      }
+
+      document.querySelectorAll(".nav-tab").forEach(btn => {
+        const t = btn.getAttribute("data-tab");
+        const mgrClass = t !== "form" ? (" manager-only" + (isManagerUnlocked ? "" : " hidden")) : "";
+        if (t === tabKey) {
+          btn.className = "nav-tab px-3 py-2 rounded-lg bg-white text-slate-900 shadow-sm flex items-center gap-1.5" + mgrClass;
+        } else {
+          btn.className = "nav-tab px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 flex items-center gap-1.5" + mgrClass;
+        }
+      });
+
+      renderAll();
+    }
+
+    function extractAmountFromOcrText(rawText, fileName) {
+      const text = (rawText || "").replace(/,/g, "");
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+      let detectedNote = "";
+      if (/uber/i.test(text)) detectedNote = "Uber Bill";
+      else if (/rapido/i.test(text)) detectedNote = "Rapido Bill";
+      else if (/ola/i.test(text)) detectedNote = "Ola Bill";
+      else if (/google\s*pay|gpay|phonepe|paytm|upi\s*transaction|paid\s*to/i.test(text)) detectedNote = "UPI / GPay Screenshot";
+      else if (/swiggy|zomato/i.test(text)) detectedNote = "Food Order Bill";
+      else if (/meter|hire|fare|km/i.test(text)) detectedNote = "Auto Meter Pic";
+
+      const highPriorityPatterns = [
+        /(?:grand\s*total|total\s*amount|total\s*fare|trip\s*fare|amount\s*paid|you\s*paid|paid|net\s*amount|bill\s*amount|total|fare)[^0-9₹\n]{0,20}(?:₹|rs\.?|inr)?\s*([0-9]{1,5}(?:\.[0-9]{1,2})?)/gi,
+        /(?:₹|rs\.?|inr)\s*([0-9]{1,5}(?:\.[0-9]{1,2})?)/gi,
+        /([0-9]{1,5}(?:\.[0-9]{1,2})?)\s*(?:₹|rs\.?|inr)/gi
+      ];
+
+      const candidates = [];
+      for (const pat of highPriorityPatterns) {
+        let m;
+        while ((m = pat.exec(text)) !== null) {
+          const val = Math.round(parseFloat(m[1]));
+          if (val > 0 && val <= 50000 && !(val >= 2024 && val <= 2029)) {
+            candidates.push(val);
+          }
+        }
+      }
+      if (candidates.length > 0) {
+        return { amount: candidates[0], note: detectedNote };
+      }
+
+      const standaloneNums = [];
+      for (const line of lines) {
+        if (/\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(line)) continue;
+        if (/\b\d{1,2}:\d{2}\b/.test(line)) continue;
+        const numMatches = line.match(/\b([1-9][0-9]{1,4})(?:\.00)?\b/g);
+        if (numMatches) {
+          for (const nm of numMatches) {
+            const v = Math.round(parseFloat(nm));
+            if (v >= 10 && v <= 25000 && !(v >= 2020 && v <= 2030)) {
+              standaloneNums.push(v);
+            }
+          }
+        }
+      }
+      if (standaloneNums.length > 0) {
+        return { amount: standaloneNums[standaloneNums.length - 1], note: detectedNote || "Auto Meter Pic" };
+      }
+
+      const cleanName = (fileName || "").replace(/202\d{5}|WA\d{4}|IMG[-_]?\d+/gi, "");
+      const fnMatch = cleanName.match(/(\d{2,5})/);
+      if (fnMatch) {
+        return { amount: parseInt(fnMatch[1], 10), note: detectedNote };
+      }
+      return { amount: null, note: detectedNote };
+    }
+
+    /**
+     * Compresses the selected image via HTML5 <canvas> (max width 800px, JPEG 0.7 quality)
+     * into Base64 (imgData) AND runs Tesseract OCR to auto-fill/verify the bill amount.
+     */
+    async function runReceiptOcrAndCompress(file, targetRowId = null) {
+      if (!file) return;
+      const wrap = document.getElementById("ocrProgressWrap");
+      const bar = document.getElementById("ocrProgressBar");
+      const txt = document.getElementById("ocrProgressText");
+      const badge = document.getElementById("ocrMatchBadge");
+
+      if (targetRowId === null) {
+        wrap.classList.remove("hidden");
+        bar.style.width = "20%";
+        txt.textContent = "📷 Compressing receipt via HTML5 Canvas (800px, JPEG 0.7)...";
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800";
+        badge.textContent = "⏳ Compressing & Scanning...";
+      }
+
+      try {
+        // Step 1: Compress image via HTML5 <canvas> (max width 800px, JPEG 0.7 quality)
+        const compressedBase64 = await compressImageFileToBase64(file, 800, 0.7);
+        if (targetRowId === null) {
+          currentDraftImgData = compressedBase64;
+        }
+
+        // Step 2: Run OCR on the compressed image
+        let ocrText = "";
+        if (window.Tesseract && typeof window.Tesseract.recognize === "function") {
+          const result = await window.Tesseract.recognize(compressedBase64, "eng", {
+            logger: m => {
+              if (targetRowId === null && m && typeof m.progress === "number") {
+                const pct = Math.max(25, Math.round(m.progress * 100));
+                bar.style.width = pct + "%";
+                txt.textContent = `🔍 Scanning receipt text (${pct}%)...`;
+              }
+            }
+          });
+          ocrText = (result && result.data && result.data.text) ? result.data.text : "";
+        }
+
+        const parsed = extractAmountFromOcrText(ocrText, file.name);
+        if (targetRowId === null) bar.style.width = "100%";
+
+        if (targetRowId !== null) {
+          const rowItem = entries.find(x => x.id === targetRowId);
+          if (rowItem) {
+            const newVal = parsed.amount !== null ? parsed.amount : rowItem.expense;
+            rowItem.billAmt = newVal;
+            rowItem.expense = newVal;
+            rowItem.imgData = compressedBase64;
+            if (parsed.note) rowItem.billNote = parsed.note;
+            saveState();
+            renderAll();
+            syncPostToGoogleSheet({ action: "updateEntry", entry: rowItem }, true);
+            showToast(`Saved compressed receipt & matched ₹${newVal} in 4-Up Vault!`);
+          }
+        } else {
+          if (parsed.amount !== null) {
+            document.getElementById("inpBillScannedAmt").value = String(parsed.amount);
+            if (document.getElementById("chkAutoUpdateAmt").checked || !document.getElementById("inpAmount").value) {
+              document.getElementById("inpAmount").value = String(parsed.amount);
+            }
+            if (parsed.note && !document.getElementById("inpBillNote").value) {
+              document.getElementById("inpBillNote").value = parsed.note;
+            }
+            txt.textContent = `✅ Compressed (800px JPEG 0.7) & OCR extracted ₹${parsed.amount} from "${file.name}"!`;
+            showToast(`Compressed photo & OCR scanned ₹${parsed.amount}!`);
+          } else {
+            const currentAmt = document.getElementById("inpAmount").value;
+            if (currentAmt) {
+              document.getElementById("inpBillScannedAmt").value = currentAmt;
+            }
+            txt.textContent = `✅ Receipt compressed & ready for 4-Up Vault — confirm Scanned Bill Amount (₹) above.`;
+            showToast("Receipt photo compressed & attached for Manager Vault!", "📷");
+          }
+          document.getElementById("blindPrivacyNotice").textContent =
+            `🔒 Compressed Receipt Ready (${file.name}) — Will render in Tab 6 Vault & upload to Google Drive on submit.`;
+          updateLiveOcrBadge();
+        }
+      } catch (err) {
+        const fallback = extractAmountFromOcrText("", file.name);
+        if (fallback.amount !== null && targetRowId === null) {
+          document.getElementById("inpBillScannedAmt").value = String(fallback.amount);
+          if (document.getElementById("chkAutoUpdateAmt").checked || !document.getElementById("inpAmount").value) {
+            document.getElementById("inpAmount").value = String(fallback.amount);
+          }
+        }
+        if (targetRowId === null) {
+          txt.textContent = "✅ Receipt image compressed & attached — verify bill amount manually.";
+          updateLiveOcrBadge();
+        }
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadState();
+
+      // Navigation tabs
+      document.querySelectorAll(".nav-tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          switchTab(btn.getAttribute("data-tab"));
+        });
+      });
+
+      document.querySelectorAll(".goto-tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          switchTab(btn.getAttribute("data-goto"));
+        });
+      });
+
+      document.querySelectorAll(".ho-period-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const p = Number(btn.getAttribute("data-hoperiod"));
+          switchTab("ho" + p);
+        });
+      });
+
+      // Tab 6: 10-Day Window Filter Bar buttons
+      document.querySelectorAll(".vault-filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          activeVaultFilter = btn.getAttribute("data-vaultfilter") || "ALL";
+          renderVaultGrid(computeEnrichedEntries());
+        });
+      });
+
+      // Manager PIN lock / unlock
+      document.getElementById("btnToggleManagerLock").addEventListener("click", () => {
+        if (isManagerUnlocked) {
+          isManagerUnlocked = false;
+          applyLockUI();
+          showToast("Closed the demo view. This is not access control.", "🧪");
+        } else {
+          document.getElementById("pinErrorMsg").classList.add("hidden");
+          document.getElementById("inpManagerPin").value = "";
+          document.getElementById("pinModal").classList.remove("hidden");
+        }
+      });
+
+      document.getElementById("btnClosePinModal").addEventListener("click", () => {
+        document.getElementById("pinModal").classList.add("hidden");
+      });
+      document.getElementById("btnCancelPin").addEventListener("click", () => {
+        document.getElementById("pinModal").classList.add("hidden");
+      });
+      document.getElementById("btnConfirmPin").addEventListener("click", () => {
+        const pin = document.getElementById("inpManagerPin").value.trim();
+        if (pin.toUpperCase() === "DEMO") {
+          isManagerUnlocked = true;
+          document.getElementById("pinModal").classList.add("hidden");
+          applyLockUI();
+          showToast("Demo view opened. This is not access control.", "🧪");
+        } else {
+          document.getElementById("pinErrorMsg").classList.remove("hidden");
+        }
+      });
+
+      // Vault Photo Modal handlers (Tab 6 Attach Screenshot or Paste Drive Link)
+      document.getElementById("btnCloseVaultModal").addEventListener("click", () => {
+        document.getElementById("vaultPhotoModal").classList.add("hidden");
+      });
+      document.getElementById("btnCancelVaultModal").addEventListener("click", () => {
+        document.getElementById("vaultPhotoModal").classList.add("hidden");
+      });
+
+      document.getElementById("inpVaultModalFile").addEventListener("change", async e => {
+        const file = e.target.files[0];
+        if (!file || vaultTargetRowId === null) return;
+        try {
+          const compressedDataUrl = await compressImageFileToBase64(file, 800, 0.7);
+          const item = entries.find(x => x.id === vaultTargetRowId);
+          if (item) {
+            item.imgData = compressedDataUrl;
+            if (!item.billAmt || item.billAmt <= 0) item.billAmt = item.expense;
+            saveState();
+            renderAll();
+            document.getElementById("vaultPhotoModal").classList.add("hidden");
+            syncPostToGoogleSheet({ action: "updateEntry", entry: item }, true);
+            showToast("Compressed & saved receipt image to 4-Up Print Vault!");
+          }
+        } catch (err) {
+          showToast("Could not compress selected image file.", "⚠️");
+        }
+      });
+
+      document.getElementById("btnSaveVaultDriveLink").addEventListener("click", () => {
+        if (vaultTargetRowId === null) return;
+        const rawInput = document.getElementById("inpVaultDriveLink").value.trim();
+        if (!rawInput) {
+          showToast("Please paste a Google Drive link or file ID first.", "⚠️");
+          return;
+        }
+        const thumbUrl = convertDriveLinkToThumbnail(rawInput);
+        const item = entries.find(x => x.id === vaultTargetRowId);
+        if (item) {
+          item.imgData = thumbUrl;
+          if (!item.billAmt || item.billAmt <= 0) item.billAmt = item.expense;
+          saveState();
+          renderAll();
+          document.getElementById("vaultPhotoModal").classList.add("hidden");
+          syncPostToGoogleSheet({ action: "updateEntry", entry: item }, true);
+          showToast("Converted Drive link to thumbnail & saved to Vault!");
+        }
+      });
+
+      document.getElementById("btnClearVaultPhoto").addEventListener("click", () => {
+        if (vaultTargetRowId === null) return;
+        const item = entries.find(x => x.id === vaultTargetRowId);
+        if (item) {
+          item.imgData = "";
+          saveState();
+          renderAll();
+          document.getElementById("vaultPhotoModal").classList.add("hidden");
+          syncPostToGoogleSheet({ action: "updateEntry", entry: item }, true);
+          showToast("Reset card to default digital voucher slip.", "ℹ️");
+        }
+      });
+
+      // Form inputs & OCR
+      document.getElementById("inpExpenseDate").addEventListener("change", updateRoutingBanner);
+      document.getElementById("inpAmount").addEventListener("input", () => {
+        const billInput = document.getElementById("inpBillScannedAmt");
+        if (!billInput.value && (document.getElementById("inpBillFile").files.length > 0 || currentDraftImgData)) {
+          billInput.value = document.getElementById("inpAmount").value;
+        }
+        updateLiveOcrBadge();
+      });
+      document.getElementById("inpCashReceived").addEventListener("input", updateLiveOcrBadge);
+
+      document.getElementById("inpBillFile").addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        runReceiptOcrAndCompress(file, null);
+      });
+
+      document.getElementById("inpRowOcrFile").addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file || scanningRowId === null) return;
+        runReceiptOcrAndCompress(file, scanningRowId);
+      });
+
+      document.getElementById("btnSyncBillToExpense").addEventListener("click", () => {
+        const scannedVal = document.getElementById("inpBillScannedAmt").value;
+        const expVal = document.getElementById("inpAmount").value;
+        if (scannedVal) {
+          document.getElementById("inpAmount").value = scannedVal;
+          updateLiveOcrBadge();
+          showToast(`Updated Expense Amount to match Bill Photo (₹${scannedVal})!`);
+        } else if (expVal) {
+          document.getElementById("inpBillScannedAmt").value = expVal;
+          updateLiveOcrBadge();
+          showToast(`Synced Scanned Bill Amount to ₹${expVal}!`);
+        }
+      });
+
+      document.getElementById("inpBillScannedAmt").addEventListener("input", () => {
+        if (document.getElementById("chkAutoUpdateAmt").checked && document.getElementById("inpBillScannedAmt").value) {
+          document.getElementById("inpAmount").value = document.getElementById("inpBillScannedAmt").value;
+        }
+        updateLiveOcrBadge();
+      });
+
+      document.querySelectorAll(".quick-remark").forEach(chip => {
+        chip.addEventListener("click", () => {
+          document.getElementById("inpRemarks").value = chip.getAttribute("data-remark") || "";
+          document.getElementById("inpAmount").value = chip.getAttribute("data-amt") || "";
+          document.getElementById("inpBillScannedAmt").value = chip.getAttribute("data-amt") || "";
+          document.getElementById("inpCategory").value = "Travelling";
+          updateLiveOcrBadge();
+        });
+      });
+
+      document.getElementById("btnResetForm").addEventListener("click", () => {
+        document.getElementById("inpRemarks").value = "";
+        document.getElementById("inpAmount").value = "";
+        document.getElementById("inpBillScannedAmt").value = "";
+        document.getElementById("inpBillFile").value = "";
+        document.getElementById("inpCashReceived").value = "0";
+        document.getElementById("inpBillNote").value = "";
+        currentDraftImgData = "";
+        document.getElementById("ocrProgressWrap").classList.add("hidden");
+        updateLiveOcrBadge();
+      });
+
+      // Submit Staff Expense Form (saves compressed Base64 imgData + triggers live Google Sheet POST)
+      document.getElementById("pettyCashForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const dateVal = document.getElementById("inpExpenseDate").value;
+        const staffVal = document.getElementById("inpStaff").value;
+        const paidByVal = document.getElementById("inpPaidBy").value;
+        const catVal = document.getElementById("inpCategory").value;
+        const amtVal = Number(document.getElementById("inpAmount").value) || 0;
+        const recVal = Number(document.getElementById("inpCashReceived").value) || 0;
+        const billAmtVal = Number(document.getElementById("inpBillScannedAmt").value) || amtVal;
+        const remVal = document.getElementById("inpRemarks").value.trim();
+        const noteVal = document.getElementById("inpBillNote").value.trim();
+
+        const nextId = entries.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1;
+        const bucket = getPeriodBucket(dateVal);
+
+        const newEntry = {
+          id: nextId,
+          staff: staffVal,
+          paidBy: paidByVal,
+          date: dateVal,
+          category: catVal,
+          remarks: remVal,
+          received: recVal,
+          expense: amtVal,
+          billAmt: billAmtVal,
+          billNote: noteVal || "Cash Memo",
+          pendingRemark: false,
+          imgData: currentDraftImgData || ""
+        };
+
+        entries.push(newEntry);
+        sortEntriesChronologically();
+        const assignedIdx = entries.findIndex(x => x.id === nextId);
+        const vchNo = formatVoucherNo(assignedIdx + 1);
+
+        saveState();
+        renderAll();
+
+        // Reset form fields
+        document.getElementById("inpRemarks").value = "";
+        document.getElementById("inpAmount").value = "";
+        document.getElementById("inpBillScannedAmt").value = "";
+        document.getElementById("inpBillFile").value = "";
+        document.getElementById("inpCashReceived").value = "0";
+        document.getElementById("inpBillNote").value = "";
+        currentDraftImgData = "";
+        document.getElementById("ocrProgressWrap").classList.add("hidden");
+        updateLiveOcrBadge();
+
+        showToast(`Saved ${vchNo} (with receipt photo) → Routed to ${getPeriodName(bucket)}!`);
+        await syncPostToGoogleSheet({ action: "addEntry", entry: { ...newEntry, voucherNo: vchNo } }, true);
+      });
+
+      document.getElementById("btnDemoNov23").addEventListener("click", () => {
+        const nextId = entries.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1;
+        const sampleEntry = {
+          id: nextId,
+          staff: "Demo Staff 1",
+          paidBy: "Demo Manager",
+          date: "2026-11-23",
+          category: "Travelling",
+          remarks: "Sample local journey (demo entry)",
+          received: 0,
+          expense: 60,
+          billAmt: 60,
+          billNote: "Auto Meter Pic",
+          pendingRemark: false,
+          imgData: ""
+        };
+        entries.push(sampleEntry);
+        sortEntriesChronologically();
+        const assignedIdx = entries.findIndex(x => x.id === nextId);
+        const vchNo = formatVoucherNo(assignedIdx + 1);
+        saveState();
+        switchTab("ho3");
+        syncPostToGoogleSheet({ action: "addEntry", entry: sampleEntry }, true);
+        showToast(`Added 23rd Nov expense (${vchNo}) → Showing in HO Petty Cash - 21st to 30th Nov!`);
+      });
+
+      // Tab 2 Save All Changes button & filters
+      document.getElementById("btnSaveAllDumpChanges").addEventListener("click", saveAllDumpRowsFromDom);
+      document.getElementById("filterDumpStaff").addEventListener("change", renderAll);
+      document.getElementById("filterMatchStatus").addEventListener("change", renderAll);
+
+      // Tab 7 Live Sync Controls
+      document.getElementById("btnSaveGasUrl").addEventListener("click", () => {
+        const url = document.getElementById("inpGasWebAppUrl").value.trim();
+        localStorage.setItem(GAS_URL_KEY, url);
+        updateGasConnectionBadge(url);
+        if (url) {
+          showToast("Saved Google Apps Script Web App URL! Pulling latest sheet data...");
+          syncPullFromGoogleSheet(false);
+        } else {
+          showToast("Cleared Web App URL (running in local device mode).", "ℹ️");
+        }
+      });
+
+      document.getElementById("btnPullFromGas").addEventListener("click", () => {
+        syncPullFromGoogleSheet(false);
+      });
+
+      document.getElementById("btnHeaderSyncNow").addEventListener("click", () => {
+        syncPullFromGoogleSheet(false);
+      });
+
+      document.getElementById("btnPushAllToGas").addEventListener("click", async () => {
+        const gasUrl = (localStorage.getItem(GAS_URL_KEY) || "").trim();
+        if (!gasUrl) {
+          showToast("Paste & save your deployed Web App URL above first.", "⚠️");
+          return;
+        }
+        showToast("Pushing all vouchers & receipt photos to Google Sheet...", "☁️");
+        await syncPostToGoogleSheet({ action: "syncAll", entries }, false);
+      });
+
+      // Copy & Print buttons
+      document.getElementById("btnCopyStaffFormUrl").addEventListener("click", () => {
+        copyTextToClipboard("https://example.com/", "Staff Google Form link");
+      });
+
+      document.getElementById("btnCopyNovSheetUrl").addEventListener("click", () => {
+        copyTextToClipboard("https://example.com/", "November 2026 Google Sheet link");
+      });
+
+      document.getElementById("btnCopyDumpTsv").addEventListener("click", () => {
+        const enriched = computeEnrichedEntries();
+        const lines = enriched.map(r =>
+          [r.staff, r.paidBy, r.date, r.voucherNo, r.category, r.remarks, r.targetSheet, r.opening, r.received, r.expense, r.closing, r.billAmt, r.matchStatus, r.billNote].join("\t")
+        );
+        copyTextToClipboard(lines.join("\n"), "Dump TSV rows");
+      });
+
+      document.getElementById("btnCopyHoTsv").addEventListener("click", () => {
+        const enriched = computeEnrichedEntries().filter(e => e.bucket === activeHoPeriod && e.expense > 0);
+        const lines = enriched.map(r =>
+          [formatShortDate(r.date), r.remarks, r.category, r.voucherNo, r.expense].join("\t")
+        );
+        copyTextToClipboard(lines.join("\n"), "HO Table rows");
+      });
+
+      document.getElementById("btnPrintHo").addEventListener("click", () => {
+        window.print();
+      });
+
+      document.getElementById("btnPrintVault").addEventListener("click", () => {
+        window.print();
+      });
+
+      document.getElementById("btnCopyAppsScript").addEventListener("click", () => {
+        const code = document.getElementById("appsScriptCode").innerText;
+        copyTextToClipboard(code, "Google Apps Script (Code.gs)");
+      });
+
+      document.getElementById("btnCopyFullHtml").addEventListener("click", () => {
+        const fullHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+        copyTextToClipboard(fullHtml, "Full HTML code for Google Sites");
+      });
+
+      renderAll();
+      // Automatically pull latest multi-phone entries on load if Web App URL is configured
+      syncPullFromGoogleSheet(true);
+    });
+  </script>
+</body>
+</html>
