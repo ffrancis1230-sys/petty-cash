@@ -513,14 +513,14 @@
           </div>
         </div>
 
-        <!-- Pending Nov 1-3 Demo Staff 2 Remarks Audit Card -->
+        <!-- Demo follow-up audit card -->
         <div class="manager-only hidden bg-amber-50/60 rounded-2xl border border-amber-200 p-5">
           <div class="flex items-center justify-between">
-            <h3 class="font-bold text-sm text-amber-950">⚠️ Pending Demo Staff 2 Remarks (Nov 1–3)</h3>
-            <span id="pendingRemarksBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">11 items</span>
+            <h3 class="font-bold text-sm text-amber-950">⚠️ Demo Follow-ups</h3>
+            <span id="pendingRemarksBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">1 item</span>
           </div>
           <p class="text-xs text-amber-800 mt-1">
-            Click <button type="button" data-goto="dump" class="goto-tab underline font-bold">2. Voucher Wise Dump</button> to edit all 11 Demo Staff 2 rows from Nov 1–3 inline and click <strong>💾 Save Changes</strong>.
+            Review sample rows in the <button type="button" data-goto="dump" class="goto-tab underline font-bold">2. Voucher Wise Dump</button>, edit if needed, and click <strong>💾 Save Changes</strong>.
           </p>
         </div>
       </div>
@@ -532,12 +532,12 @@
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h2 class="text-base sm:text-lg font-bold text-slate-900">Demo Manager: Petty Cash Voucher Register</h2>
-            <p class="text-xs text-slate-500">Inline Edit Date, Category, Particulars &amp; Amount (including the 11 Nov 1–3 Demo Staff 2 rows) → Click <strong>💾 Save Changes</strong> to recalculate HO sheets &amp; 4-Up Print cards</p>
+            <p class="text-xs text-slate-500">Edit fictional demo rows inline, then click <strong>💾 Save Changes</strong> to recalculate HO views &amp; 4-Up Print cards</p>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <select id="filterDumpStaff" aria-label="Filter by staff" class="text-xs rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white font-medium">
-              <option value="ALL">All Staff (20+)</option>
-              <option value="PENDING_BIPUL">⚠️ Pending Demo Staff 2 Rows (Nov 1–3)</option>
+              <option value="ALL">All Demo Staff</option>
+              <option value="PENDING_DEMO">⚠️ Pending Demo Follow-ups</option>
               <option value="Demo Staff 2">Demo Staff 2 Only</option>
               <option value="Demo Staff 1">Demo Staff 1 Only</option>
               <option value="Demo Staff 3">Demo Staff 3 Only</option>
@@ -1529,7 +1529,7 @@ function jsonResponse_(obj) {
       const filtered = enriched.filter(e => {
         const matchStaff =
           staffFilter === "ALL" ? true :
-          staffFilter === "PENDING_BIPUL" ? (e.staff === "Demo Staff 2" && (e.pendingRemark || e.date <= "2026-11-03")) :
+          staffFilter === "PENDING_DEMO" ? Boolean(e.pendingRemark) :
           e.staff === staffFilter;
         const matchStat = statusFilter === "ALL" || e.matchStatus === statusFilter;
         return matchStaff && matchStat;
